@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ideasama icon">
+  <title>ideasama icon</title>
+  <defs>
+    <linearGradient id="r" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e96a6a"/>
+      <stop offset="100%" stop-color="#d44848"/>
+    </linearGradient>
+  </defs>
+  <!-- Minimal torii gate, gentle red, Japanese style -->
+  <!-- Top beam -->
+  <path d="M8 16h48" stroke="url(#r)" stroke-width="6" stroke-linecap="round"/>
+  <!-- Cap beam slightly wider -->
+  <path d="M6 12h52" stroke="#f0a0a0" stroke-width="3" stroke-linecap="round"/>
+  <!-- Pillars -->
+  <path d="M18 20v32" stroke="url(#r)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M46 20v32" stroke="url(#r)" stroke-width="6" stroke-linecap="round"/>
+  <!-- Middle tie beam -->
+  <path d="M22 28h20" stroke="#e96a6a" stroke-width="4" stroke-linecap="round"/>
+  <!-- Subtle ground shadow -->
+  <ellipse cx="32" cy="56" rx="16" ry="2.5" fill="#f2d5d5"/>
+</svg>
