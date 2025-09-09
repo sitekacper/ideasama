@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'repository.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
 import 'models.dart';
+import 'repository.dart';
 import 'viewmodels.dart';
 import 'share_helper.dart';
-// import 'dart:math' show min;
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const ProviderScope(child: IdeaApp()));
@@ -16,470 +17,264 @@ class IdeaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = Colors.red;
     return MaterialApp(
-      title: 'ideasamaapp',
+      title: 'Idea App',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        colorScheme: ColorScheme.fromSeed(seedColor: color),
         useMaterial3: true,
+        scaffoldBackgroundColor: Colors.white,
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          shape: CircleBorder(),
+          elevation: 0,
+          focusElevation: 0,
+          hoverElevation: 0,
+          disabledElevation: 0,
+        ),
+        bottomAppBarTheme: const BottomAppBarThemeData(
+          elevation: 0,
+        ),
+        inputDecorationTheme: const InputDecorationTheme(
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          isDense: true,
+          filled: true,
+          fillColor: Color(0xFFF3F4F6),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        ),
       ),
       home: const HomePage(),
     );
   }
 }
 
-class HomePage extends ConsumerStatefulWidget {
+class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
-  ConsumerState<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends ConsumerState<HomePage> {
-  final _searchCtrl = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _searchCtrl.addListener(() {
-      ref.read(homeViewModelProvider.notifier).setSearchQuery(_searchCtrl.text);
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(homeViewModelProvider);
+    final vm = ref.read(homeViewModelProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SvgPicture.asset('assets/ideasamaapp_logo.svg', height: 22),
-            const SizedBox(height: 2),
-            const Text(
-              'ideasama',
-              style: TextStyle(
-                fontSize: 11,
-                letterSpacing: 0.2,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+        title: InkWell(
+          onTap: () async {
+            const url = 'https://agent.ideasama.pro';
+            final uri = Uri.parse(url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          },
+          child: SvgPicture.asset(
+            'assets/ideasamaapp_logo.svg',
+            height: 24,
+            semanticsLabel: 'IdeaSama',
+          ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(state.showLast7Days ? Icons.filter_alt : Icons.filter_alt_outlined),
-            tooltip: 'Last 7 days',
-            color: state.showLast7Days ? Theme.of(context).colorScheme.primary : null,
-            onPressed: () => ref.read(homeViewModelProvider.notifier).toggleShowLast7Days(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            tooltip: 'Trash',
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TrashPage()));
-            },
-          ),
-          PopupMenuButton<NoteStatus?>(
-            tooltip: 'Status filter',
-            icon: Icon(Icons.filter_list, color: state.statusFilter != null ? Theme.of(context).colorScheme.primary : null),
-            onSelected: (s) => ref.read(homeViewModelProvider.notifier).setStatusFilter(s),
-            itemBuilder: (context) {
-              String label(NoteStatus s) {
-                final n = s.name;
-                return n[0].toUpperCase() + n.substring(1);
-              }
-              return [
-                CheckedPopupMenuItem<NoteStatus?>(
-                  checked: state.statusFilter == null,
-                  value: null,
-                  child: const Text('All statuses'),
-                ),
-                ...NoteStatus.values.map((s) => CheckedPopupMenuItem<NoteStatus?>(
-                      checked: state.statusFilter == s,
-                      value: s,
-                      child: Text(label(s)),
-                    )),
-              ];
-            },
-          ),
-          PopupMenuButton<SortBy>(
-            onSelected: (s) => ref.read(homeViewModelProvider.notifier).setSortBy(s),
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: SortBy.updatedAtDesc, child: Text('Newest')),
-              PopupMenuItem(value: SortBy.updatedAtAsc, child: Text('Oldest')),
-              PopupMenuItem(value: SortBy.titleAsc, child: Text('Title A-Z')),
-              PopupMenuItem(value: SortBy.titleDesc, child: Text('Title Z-A')),
-            ],
-          )
-        ],
+        centerTitle: true,
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: _searchCtrl,
-              decoration: InputDecoration(
-                hintText: 'Search notes...',
-                prefixIcon: const Icon(Icons.search),
-                border: const OutlineInputBorder(),
-                suffixIcon: state.searchQuery.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          FocusScope.of(context).unfocus();
-                        },
-                      ),
-              ),
-            ),
-          ),
-          if (state.isLoading) const LinearProgressIndicator(minHeight: 2),
-          if (state.error != null) Padding(
-            padding: const EdgeInsets.all(8),
-            child: Text(state.error!, style: const TextStyle(color: Colors.red)),
-          ),
-          Expanded(
-            child: state.searchQuery.isNotEmpty
-              ? _SearchList(results: state.searchResults)
-              : (state.folders.isEmpty && state.recentNotes.isEmpty
-                ? _EmptyState(onCreate: () async {
-                    final repo = ref.read(repositoryProvider);
-                    final folder = await repo.getOrCreateFolderByName('Quick Ideas');
-                    final note = await ref.read(homeViewModelProvider.notifier).createNote(folder, 'New note');
-                    if (!context.mounted) return;
-                    await Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => NoteEditorPage(noteId: note.id),
-                    ));
-                    if (!context.mounted) return;
-                    await ref.read(homeViewModelProvider.notifier).loadData();
-                  })
-                : _HomeLists(folders: state.folders, notes: state.recentNotes)),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final repo = ref.read(repositoryProvider);
-          // Simple quick add flow
-          final folder = await repo.getOrCreateFolderByName('Quick Ideas');
-          final note = await ref.read(homeViewModelProvider.notifier).createNote(folder, 'New note');
-          if (!context.mounted) return;
-          await Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => NoteEditorPage(noteId: note.id),
-          ));
-          if (!context.mounted) return;
-          await ref.read(homeViewModelProvider.notifier).loadData();
-        },
-        label: const Text('Quick Add'),
-        icon: const Icon(Icons.add),
-      ),
-    );
-  }
-}
-
-class _HomeLists extends ConsumerWidget {
-  final List<Folder> folders;
-  final List<Note> notes; // recent notes
-  const _HomeLists({required this.folders, required this.notes});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    String relativeTime(DateTime time) {
-      final now = DateTime.now();
-      final diff = now.difference(time);
-      if (diff.inSeconds < 60) return 'just now';
-      if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-      if (diff.inHours < 24) return '${diff.inHours}h ago';
-      if (diff.inDays < 7) return '${diff.inDays}d ago';
-      String two(int n) => n.toString().padLeft(2, '0');
-      return '${time.year}-${two(time.month)}-${two(time.day)} ${two(time.hour)}:${two(time.minute)}';
-    }
-
-    return ListView(
-      children: [
-        if (folders.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Text('Folders', style: Theme.of(context).textTheme.titleMedium),
-          ),
-        ...folders.map((f) => ListTile(
-              leading: const Icon(Icons.folder),
-              title: Text(f.name),
-              subtitle: Text('Updated ${relativeTime(f.updatedAt)}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (f.pinned) const Icon(Icons.push_pin, size: 18),
-                  IconButton(
-                    icon: const Icon(Icons.share),
-                    tooltip: 'Share all',
-                    onPressed: () async {
-                      final repo = ref.read(repositoryProvider);
-                      final notes = await repo.listNotesInFolder(f.id);
-                      final title = 'Ideas: ${f.name}';
-                      final body = notes.isEmpty
-                          ? '(no notes)'
-                          : notes.map((n) {
-                              final t = n.title.isEmpty ? '(untitled)' : n.title;
-                              return '---\n$t\n\n${n.content}'.trim();
-                            }).join('\n\n');
-                      await shareTextAsAttachment(title, body);
-                    },
-                  ),
-                  PopupMenuButton<String>(
-                    onSelected: (value) async {
-                      if (value == 'rename') {
-                        final controller = TextEditingController(text: f.name);
-                        final newName = await showDialog<String>(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: const Text('Rename folder'),
-                            content: TextField(
-                              controller: controller,
-                              decoration: const InputDecoration(hintText: 'Folder name'),
-                              autofocus: true,
-                            ),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-                              TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('Save')),
-                            ],
-                          ),
-                        );
-                        if (newName != null && newName.isNotEmpty && newName != f.name) {
-                          await ref.read(homeViewModelProvider.notifier).renameFolder(f.id, newName);
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Folder renamed')));
-                        }
-                      } else if (value == 'pin') {
-                        await ref.read(homeViewModelProvider.notifier).toggleFolderPinned(f.id);
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.pinned ? 'Unpinned' : 'Pinned')));
-                      } else if (value == 'trash_page') {
-                        if (!context.mounted) return;
-                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TrashPage()));
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'rename', child: Text('Rename')),
-                      PopupMenuItem(value: 'pin', child: Text(f.pinned ? 'Unpin' : 'Pin')),
-                      const PopupMenuItem(value: 'trash_page', child: Text('Open Trash')),
-                    ],
-                  ),
-                ],
-              ),
-              onLongPress: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text('Delete folder?'),
-                    content: const Text('Deleting a folder will remove all its notes. This cannot be undone.'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
-                    ],
-                  ),
-                );
-                if (confirm == true) {
-                  await ref.read(homeViewModelProvider.notifier).deleteFolder(f.id);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Folder deleted')));
-                }
-              },
-              onTap: () {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => FolderPage(folder: f),
-                ));
-              },
-            )),
-        if (notes.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Text('Recent', style: Theme.of(context).textTheme.titleMedium),
-          ),
-        ...notes.map((n) {
-          final preview = n.content.length > 120 ? '${n.content.substring(0, 120)}…' : n.content;
-          Widget statusChip(NoteStatus s) {
-            String label;
-            Color? color;
-            switch (s) {
-              case NoteStatus.idea:
-                label = 'Idea';
-                color = Colors.blueGrey.shade200;
-                break;
-              case NoteStatus.draft:
-                label = 'Draft';
-                color = Colors.amber.shade300;
-                break;
-              case NoteStatus.ready:
-                label = 'Ready';
-                color = Colors.blue.shade300;
-                break;
-              case NoteStatus.done:
-                label = 'Done';
-                color = Colors.green.shade300;
-                break;
-              case NoteStatus.dropped:
-                label = 'Dropped';
-                color = Colors.red.shade300;
-                break;
-            }
-            return Container(
-              margin: const EdgeInsets.only(left: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(label, style: const TextStyle(fontSize: 11)),
-            );
-          }
-          return ListTile(
-            leading: const Icon(Icons.note),
-            title: Row(
+          SafeArea(
+            child: Column(
               children: [
-                if (n.pinned)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 4),
-                    child: Icon(Icons.push_pin, size: 16),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Szukaj notatek...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: InputBorder.none,
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    ),
+                    onChanged: vm.setSearchQuery,
                   ),
-                Expanded(child: Text(n.title.isEmpty ? '(untitled)' : n.title)),
-                statusChip(n.status),
+                ),
+                if (state.searchQuery.isNotEmpty)
+                  Expanded(
+                    child: _SearchList(results: state.searchResults),
+                  )
+                else
+                  Expanded(
+                    child: (state.folders.isEmpty && state.recentNotes.isEmpty)
+                        ? const _EmptyState(text: 'Brak notatek. Dodaj pierwszą za pomocą przycisku +')
+                        : _HomeLists(
+                            folders: state.folders,
+                            recent: state.recentNotes,
+                          ),
+                  ),
               ],
             ),
-            subtitle: Text(preview),
-            trailing: PopupMenuButton<String>(
-              onSelected: (value) async {
-                if (value == 'open') {
-                  final nav = Navigator.of(context);
-                  await nav.push(MaterialPageRoute(
-                    builder: (_) => NoteEditorPage(noteId: n.id),
-                  ));
-                  await ref.read(homeViewModelProvider.notifier).loadData();
-                } else if (value == 'share') {
-                  final title = n.title.isEmpty ? '(untitled)' : n.title;
-                  final body = '$title\n\n${n.content}';
-                  shareTextAsAttachment(title, body);
-                } else if (value == 'delete') {
-                  await ref.read(homeViewModelProvider.notifier).deleteNoteById(n.id);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Moved to Trash')));
-                  await ref.read(homeViewModelProvider.notifier).loadData();
-                } else if (value == 'trash_page') {
-                  if (!context.mounted) return;
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TrashPage()));
-                }
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'open', child: Text('Open')),
-                PopupMenuItem(value: 'share', child: Text('Share')),
-                PopupMenuItem(value: 'delete', child: Text('Move to Trash')),
-                PopupMenuItem(value: 'trash_page', child: Text('Open Trash')),
-              ],
-            ),
-            onTap: () async {
-              final nav = Navigator.of(context);
-              await nav.push(MaterialPageRoute(
-                builder: (_) => NoteEditorPage(noteId: n.id),
-              ));
-              // Odśwież listy po powrocie z edytora
-              await ref.read(homeViewModelProvider.notifier).loadData();
-            },
-          );
-        }),
-      ],
-    );
-  }
-}
-
-class _SearchList extends ConsumerWidget {
-  final List<SearchResult> results;
-  const _SearchList({required this.results});
-
-  String relativeTime(DateTime time) {
-    final now = DateTime.now();
-    final diff = now.difference(time);
-    if (diff.inSeconds < 60) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${time.year}-${two(time.month)}-${two(time.day)} ${two(time.hour)}:${two(time.minute)}';
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (results.isEmpty) {
-      return const Center(child: Text('No results'));
-    }
-    return ListView.builder(
-      itemCount: results.length,
-      itemBuilder: (context, index) {
-        final r = results[index].note;
-        final preview = r.content.length > 120 ? '${r.content.substring(0, 120)}…' : r.content;
-        return ListTile(
-          leading: const Icon(Icons.search),
-          title: Text(r.title.isEmpty ? '(untitled)' : r.title),
-          subtitle: Text(preview),
-          trailing: Text(relativeTime(r.updatedAt), style: Theme.of(context).textTheme.bodySmall),
-          onTap: () {
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => NoteEditorPage(noteId: r.id),
-            ));
-          },
-          onLongPress: () async {
-            final confirm = await showDialog<bool>(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: const Text('Delete note?'),
-                content: const Text('This action cannot be undone.'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
-                ],
+          ),
+          // Ręcznie pozycjonowany FAB na dole, ponad BottomAppBar
+          Positioned(
+            bottom: 28, // nad BottomAppBar z lekkim marginesem
+            left: 0,
+            right: 0,
+            child: Center(
+              child: FloatingActionButton(
+                tooltip: 'Dodaj',
+                onPressed: () async {
+                  await showModalBottomSheet(
+                    context: context,
+                    showDragHandle: true,
+                    useSafeArea: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    builder: (_) {
+                      final textController = TextEditingController();
+                      return SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.note_add_outlined),
+                              title: const Text('Szybka notatka'),
+                              subtitle: const Text('Utwórz nową notatkę i przejdź do edycji'),
+                              onTap: () async {
+                                Navigator.pop(context);
+                                final repo = ref.read(repositoryProvider);
+                                final state = ref.read(homeViewModelProvider);
+                                Folder folder;
+                                if (state.folders.isNotEmpty) {
+                                  folder = state.folders.first;
+                                } else {
+                                  folder = await ref.read(homeViewModelProvider.notifier).createFolder('Quick Ideas');
+                                }
+                                final note = await repo.createNote(folder, title: 'Nowa notatka');
+                                if (context.mounted) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => NoteEditorPage(noteId: note.id)),
+                                  );
+                                }
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.create_new_folder_outlined),
+                              title: const Text('Nowy folder'),
+                              onTap: () async {
+                                Navigator.pop(context);
+                                String name = 'Nowy folder';
+                                final input = await showDialog<String>(
+                                  context: context,
+                                  builder: (ctx) {
+                                    return AlertDialog(
+                                      title: const Text('Nazwa folderu'),
+                                      content: TextField(
+                                        controller: textController,
+                                        autofocus: true,
+                                        decoration: const InputDecoration(hintText: 'Wpisz nazwę folderu'),
+                                      ),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Anuluj')),
+                                        FilledButton(onPressed: () => Navigator.pop(ctx, textController.text.trim()), child: const Text('Utwórz')),
+                                      ],
+                                    );
+                                  },
+                                );
+                                if (input != null && input.isNotEmpty) name = input;
+                                final folder = await ref.read(homeViewModelProvider.notifier).createFolder(name);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Utworzono folder: ${folder.name}')),
+                                  );
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+                child: const Icon(Icons.add),
               ),
-            );
-            if (confirm == true) {
-              await ref.read(homeViewModelProvider.notifier).deleteNoteById(r.id);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Note deleted')));
-            }
-          },
-        );
-      },
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  final VoidCallback onCreate;
-  const _EmptyState({required this.onCreate});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.lightbulb, size: 64, color: Colors.amber),
-          const SizedBox(height: 12),
-          const Text('No folders or notes yet'),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: onCreate,
-            icon: const Icon(Icons.add),
-            label: const Text('Create your first idea'),
+            ),
           ),
         ],
+      ),
+      // Usuwamy FAB ze Scaffold i pozostawiamy tylko ręcznie pozycjonowany w Stack
+      //floatingActionButton: FloatingActionButton(
+      //  ...
+      //),
+      //floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        // Usuwamy notcha, bo FAB nie jest dokowany (renderowany ręcznie powyżej)
+        //shape: const CircularNotchedRectangle(),
+        //notchMargin: 6,
+        elevation: 8,
+        color: Theme.of(context).colorScheme.surface,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: SizedBox(
+            height: 56,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    PopupMenuButton<String>(
+                      tooltip: 'Filtr statusu',
+                      icon: const Icon(Icons.filter_list, size: 20),
+                      position: PopupMenuPosition.over,
+                      constraints: const BoxConstraints(minWidth: 160, maxWidth: 200),
+                      offset: const Offset(0, -200),
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'all':
+                            vm.setStatusFilter(null);
+                            break;
+                          case 'idea':
+                            vm.setStatusFilter(NoteStatus.idea);
+                            break;
+                          case 'draft':
+                            vm.setStatusFilter(NoteStatus.draft);
+                            break;
+                        }
+                      },
+                      itemBuilder: (ctx) => const [
+                        PopupMenuItem(value: 'all', child: Text('Wszystkie')),
+                        PopupMenuItem(value: 'idea', child: Text('Pomysły')),
+                        PopupMenuItem(value: 'draft', child: Text('Szkice')),
+                      ],
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    PopupMenuButton<String>(
+                      tooltip: 'Sortowanie',
+                      icon: const Icon(Icons.sort, size: 20),
+                      position: PopupMenuPosition.over,
+                      constraints: const BoxConstraints(minWidth: 160, maxWidth: 200),
+                      offset: const Offset(0, -200),
+                      onSelected: (value) => vm.setSort(value),
+                      itemBuilder: (ctx) => const [
+                        PopupMenuItem(value: 'date_desc', child: Text('Najnowsze')),
+                        PopupMenuItem(value: 'date_asc', child: Text('Najstarsze')),
+                        PopupMenuItem(value: 'title_asc', child: Text('Tytuł A-Z')),
+                        PopupMenuItem(value: 'title_desc', child: Text('Tytuł Z-A')),
+                      ],
+                    ),
+                    IconButton(
+                      tooltip: 'Kosz',
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const TrashPage()),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -494,454 +289,353 @@ class NoteEditorPage extends ConsumerStatefulWidget {
 }
 
 class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
-  late final TextEditingController _titleCtrl;
-  late final TextEditingController _contentCtrl;
-  bool _programmaticUpdate = false;
+  final _titleController = TextEditingController();
+  final _contentController = TextEditingController();
+  bool _controllersInitialized = false;
+  bool _isApplyingExternalChange = false;
 
   @override
   void initState() {
     super.initState();
-    _titleCtrl = TextEditingController();
-    _contentCtrl = TextEditingController();
+    // Nasłuchiwanie zmian użytkownika i aktualizacja VM bez pętli zwrotnej
+    _titleController.addListener(() {
+      if (_isApplyingExternalChange) return;
+      final vm = ref.read(noteEditorViewModelProvider(widget.noteId).notifier);
+      vm.updateTitle(_titleController.text);
+    });
+    _contentController.addListener(() {
+      if (_isApplyingExternalChange) return;
+      final vm = ref.read(noteEditorViewModelProvider(widget.noteId).notifier);
+      vm.updateContent(_contentController.text);
+    });
   }
 
   @override
   void dispose() {
-    _titleCtrl.dispose();
-    _contentCtrl.dispose();
+    _titleController.dispose();
+    _contentController.dispose();
     super.dispose();
   }
 
-  void _syncFromVm(Note? note) {
-    if (note == null) return;
-    _programmaticUpdate = true;
-    if (_titleCtrl.text != note.title) _titleCtrl.text = note.title;
-    if (_contentCtrl.text != note.content) _contentCtrl.text = note.content;
-    _programmaticUpdate = false;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final vm = ref.watch(noteEditorViewModelProvider(widget.noteId));
-    final editing = vm.note;
-    if (editing != null && (_titleCtrl.text != editing.title || _contentCtrl.text != editing.content)) {
-      _syncFromVm(editing);
-    }
+    // Synchronizuj kontrolery z ZEWNĘTRZNYMI zmianami notatki (np. AI, forceSave, replace)
+    ref.listen<NoteEditorState>(noteEditorViewModelProvider(widget.noteId), (prev, next) {
+      final newNote = next.note;
+      if (newNote == null) return;
+      if (!_controllersInitialized) {
+        _isApplyingExternalChange = true;
+        _titleController.value = TextEditingValue(
+          text: newNote.title,
+          selection: TextSelection.collapsed(offset: newNote.title.length),
+        );
+        _contentController.value = TextEditingValue(
+          text: newNote.content,
+          selection: TextSelection.collapsed(offset: newNote.content.length),
+        );
+        _isApplyingExternalChange = false;
+        _controllersInitialized = true;
+        return;
+      }
+      if (_titleController.text != newNote.title) {
+        _isApplyingExternalChange = true;
+        final sel = _titleController.selection;
+        final base = sel.baseOffset.clamp(0, newNote.title.length);
+        final extent = sel.extentOffset.clamp(0, newNote.title.length);
+        _titleController.value = TextEditingValue(
+          text: newNote.title,
+          selection: TextSelection(baseOffset: base, extentOffset: extent),
+        );
+        _isApplyingExternalChange = false;
+      }
+      if (_contentController.text != newNote.content) {
+        _isApplyingExternalChange = true;
+        final sel = _contentController.selection;
+        final base = sel.baseOffset.clamp(0, newNote.content.length);
+        final extent = sel.extentOffset.clamp(0, newNote.content.length);
+        _contentController.value = TextEditingValue(
+          text: newNote.content,
+          selection: TextSelection(baseOffset: base, extentOffset: extent),
+        );
+        _isApplyingExternalChange = false;
+      }
+    });
+
+    // Jedno źródło SnackBarów błędów (bez duplikatów przy rebuildach)
+    ref.listen<NoteEditorState>(noteEditorViewModelProvider(widget.noteId), (prev, next) {
+      final err = next.error;
+      if (err != null && err.isNotEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+        }
+        ref.read(noteEditorViewModelProvider(widget.noteId).notifier).dismissError();
+      }
+    });
+
+    final state = ref.watch(noteEditorViewModelProvider(widget.noteId));
+    final vm = ref.read(noteEditorViewModelProvider(widget.noteId).notifier);
+    final note = state.note;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(editing?.title.isEmpty == true ? 'Edit note' : editing?.title ?? 'Edit note'),
+        title: Text(note?.title ?? 'Edytor'),
         actions: [
-          if (vm.isSaving) const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))),
-          ),
-          if (editing != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-              child: _StatusBadge(status: editing.status),
-            ),
-          if (editing != null) IconButton(
-            icon: Icon(editing.pinned ? Icons.push_pin : Icons.push_pin_outlined),
-            tooltip: editing.pinned ? 'Unpin' : 'Pin',
+          IconButton(
+            tooltip: 'Udostępnij',
+            icon: const Icon(Icons.ios_share),
             onPressed: () async {
-              await ref.read(repositoryProvider).setNotePinned(editing.id, !editing.pinned);
-              if (!mounted) return;
-              await ref.read(noteEditorViewModelProvider(widget.noteId).notifier).loadNote(widget.noteId);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(editing.pinned ? 'Unpinned' : 'Pinned')));
+              final text = note?.content.trim() ?? '';
+              if (text.isEmpty) return;
+              await shareTextAsAttachment(
+                context,
+                (note?.title ?? 'notatka').trim(),
+                text,
+              );
             },
           ),
-          if (editing != null) PopupMenuButton<String>(
-            onSelected: (value) async {
-              if (editing == null) return;
-              NoteStatus? newStatus;
-              switch (value) {
-                case 'status_idea': newStatus = NoteStatus.idea; break;
-                case 'status_draft': newStatus = NoteStatus.draft; break;
-                case 'status_ready': newStatus = NoteStatus.ready; break;
-                case 'status_done': newStatus = NoteStatus.done; break;
-                case 'status_dropped': newStatus = NoteStatus.dropped; break;
-              }
-              if (newStatus != null) {
-                await ref.read(repositoryProvider).setNoteStatus(editing.id, newStatus);
-                if (!mounted) return;
-                await ref.read(noteEditorViewModelProvider(widget.noteId).notifier).loadNote(widget.noteId);
-                final label = newStatus.name[0].toUpperCase() + newStatus.name.substring(1);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status: $label')));
+          // Ustawienia AI przeniesione do backendu (Cloudflare Worker), ukrywamy przycisk w UI
+          const SizedBox.shrink(),
+          PopupMenuButton<String>(
+            tooltip: 'Menu notatki',
+            position: PopupMenuPosition.over,
+            constraints: const BoxConstraints(minWidth: 140, maxWidth: 180),
+            onSelected: (v) async {
+              switch (v) {
+                case 'pin':
+                  await vm.togglePinned();
+                  break;
+                case 'idea':
+                  await vm.setStatus(NoteStatus.idea);
+                  break;
+                case 'draft':
+                  await vm.setStatus(NoteStatus.draft);
+                  break;
+                case 'ready':
+                  await vm.setStatus(NoteStatus.ready);
+                  break;
+                case 'done':
+                  await vm.setStatus(NoteStatus.done);
+                  break;
+                case 'dropped':
+                  await vm.setStatus(NoteStatus.dropped);
+                  break;
+                case 'trash':
+                  await vm.deleteCurrent();
+                  if (context.mounted) Navigator.pop(context);
+                  break;
               }
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'status_idea', child: Text('Set status: Idea')),
-              PopupMenuItem(value: 'status_draft', child: Text('Set status: Draft')),
-              PopupMenuItem(value: 'status_ready', child: Text('Set status: Ready')),
-              PopupMenuItem(value: 'status_done', child: Text('Set status: Done')),
-              PopupMenuItem(value: 'status_dropped', child: Text('Set status: Dropped')),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'pin',
+                child: Row(children: [
+                  Icon((note?.pinned ?? false) ? Icons.push_pin_outlined : Icons.push_pin, size: 18),
+                  const SizedBox(width: 8),
+                  Text((note?.pinned ?? false) ? 'Odepnij' : 'Przypnij'),
+                ]),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(value: 'idea', child: Text('Status: Pomysły')),
+              const PopupMenuItem(value: 'draft', child: Text('Status: Szkice')),
+              const PopupMenuItem(value: 'ready', child: Text('Status: Gotowe')),
+              const PopupMenuItem(value: 'done', child: Text('Status: Zrobione')),
+              const PopupMenuItem(value: 'dropped', child: Text('Status: Porzucone')),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'trash',
+                child: Row(children: [
+                  Icon(Icons.delete_outline, size: 18),
+                  SizedBox(width: 8),
+                  Text('Przenieś do kosza'),
+                ]),
+              ),
             ],
           ),
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: () => ref.read(noteEditorViewModelProvider(widget.noteId).notifier).forceSave(),
-            tooltip: 'Save now',
-          ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: editing == null ? null : () {
-              final title = editing.title.isEmpty ? '(untitled)' : editing.title;
-              final body = '$title\n\n${editing.content}';
-              shareTextAsAttachment(title, body);
-            },
-            tooltip: 'Share',
-          ),
         ],
       ),
-      body: editing == null
+      body: note == null
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _titleCtrl,
-                    onChanged: (v) {
-                      if (_programmaticUpdate) return;
-                      ref.read(noteEditorViewModelProvider(widget.noteId).notifier).updateTitle(v);
-                    },
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: TextFormField(
+                    controller: _titleController,
                     decoration: const InputDecoration(
-                      hintText: 'Title',
-                      border: OutlineInputBorder(),
+                      hintText: 'Tytuł (opcjonalny)',
+                      border: InputBorder.none,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _contentCtrl,
-                      onChanged: (v) {
-                        if (_programmaticUpdate) return;
-                        ref.read(noteEditorViewModelProvider(widget.noteId).notifier).updateContent(v);
-                      },
-                      maxLines: null,
-                      expands: true,
-                      textAlignVertical: TextAlignVertical.top,
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: TextFormField(
+                      controller: _contentController,
                       decoration: const InputDecoration(
-                        hintText: 'Start typing...',
-                        border: OutlineInputBorder(),
+                        border: InputBorder.none,
+                        hintText: 'Treść notatki...',
                       ),
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
                     ),
                   ),
-                  if (vm.error != null) Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(vm.error!, style: const TextStyle(color: Colors.red)),
-                  )
-                ],
-              ),
+                ),
+                if (state.suggestions.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text('Sugestie AI'),
+                            const Spacer(),
+                            TextButton.icon(
+                              onPressed: vm.toggleSuggestionsPanel,
+                              icon: Icon(state.showSuggestions ? Icons.expand_less : Icons.expand_more),
+                              label: Text(state.showSuggestions ? 'Zwiń' : 'Rozwiń'),
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton.icon(
+                              onPressed: vm.applyAllAppend,
+                              icon: const Icon(Icons.playlist_add),
+                              label: const Text('Dodaj wszystkie'),
+                            ),
+                            TextButton.icon(
+                              onPressed: vm.discardAllSuggestions,
+                              icon: const Icon(Icons.clear_all),
+                              label: const Text('Odrzuć wszystkie'),
+                            ),
+                          ],
+                        ),
+                        if (state.showSuggestions) ...[
+                          const SizedBox(height: 8),
+                          ...state.suggestions.map((s) => Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(s.content),
+                                      const SizedBox(height: 8),
+                                      Wrap(
+                                        spacing: 8,
+                                        children: [
+                                          OutlinedButton.icon(
+                                            onPressed: () => vm.applySuggestionAppend(s),
+                                            icon: const Icon(Icons.add),
+                                            label: const Text('Dodaj do końca'),
+                                          ),
+                                          OutlinedButton.icon(
+                                            onPressed: () => vm.applySuggestionReplace(s),
+                                            icon: const Icon(Icons.swap_horiz),
+                                            label: const Text('Zastąp całość'),
+                                          ),
+                                          OutlinedButton.icon(
+                                            onPressed: () => vm.applySuggestionAsSection(s),
+                                            icon: const Icon(Icons.view_agenda_outlined),
+                                            label: const Text('Nowa sekcja'),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )),
+                        ]
+                      ],
+                    ),
+                  ),
+              ],
             ),
-    );
-  }
-}
-
-// NEW: Simple page listing notes inside a folder
-class FolderPage extends ConsumerStatefulWidget {
-  final Folder folder;
-  const FolderPage({super.key, required this.folder});
-
-  @override
-  ConsumerState<FolderPage> createState() => _FolderPageState();
-}
-
-class _FolderPageState extends ConsumerState<FolderPage> {
-  late Future<List<Note>> _future;
-  bool _pinned = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _pinned = widget.folder.pinned;
-    _load();
-  }
-
-  void _load() {
-    final repo = ref.read(repositoryProvider);
-    _future = repo.listNotesInFolder(widget.folder.id);
-  }
-
-  Future<void> _shareFolder() async {
-    final repo = ref.read(repositoryProvider);
-    final notes = await repo.listNotesInFolder(widget.folder.id);
-    final title = 'Ideas: ${widget.folder.name}';
-    final body = notes.isEmpty
-        ? '(no notes)'
-        : notes.map((n) {
-            final t = n.title.isEmpty ? '(untitled)' : n.title;
-            return '---\n$t\n\n${n.content}'.trim();
-          }).join('\n\n');
-    await shareTextAsAttachment(title, body);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.folder.name),
-        actions: [
-          IconButton(
-            icon: Icon(_pinned ? Icons.push_pin : Icons.push_pin_outlined),
-            tooltip: _pinned ? 'Unpin' : 'Pin',
-            onPressed: () async {
-              await ref.read(homeViewModelProvider.notifier).toggleFolderPinned(widget.folder.id);
-              if (!mounted) return;
-              setState(() {
-                _pinned = !_pinned;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(_pinned ? 'Pinned' : 'Unpinned')),
-              );
-            },
+      floatingActionButton: Wrap(
+        spacing: 10,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'ai1',
+            tooltip: 'Pomysły AI',
+            onPressed: state.isGenerating ? null : vm.generateIdeasWithApi,
+            child: const Icon(Icons.lightbulb_outline, size: 18),
           ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            tooltip: 'Share all',
-            onPressed: _shareFolder,
-          )
+          FloatingActionButton.small(
+            heroTag: 'ai2',
+            tooltip: 'Rozwiń AI',
+            onPressed: state.isGenerating ? null : vm.expandIdeaWithApi,
+            child: const Icon(Icons.text_snippet_outlined, size: 18),
+          ),
         ],
       ),
-      body: FutureBuilder<List<Note>>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final notes = snap.data ?? const <Note>[];
-          if (notes.isEmpty) {
-            return const Center(child: Text('No notes in this folder'));
-          }
-          return ListView.builder(
-            itemCount: notes.length,
-            itemBuilder: (context, index) {
-              final n = notes[index];
-              final preview = n.content.length > 120 ? '${n.content.substring(0, 120)}…' : n.content;
-              Widget statusChip(NoteStatus s) {
-                String label;
-                Color? color;
-                switch (s) {
-                  case NoteStatus.idea:
-                    label = 'Idea';
-                    color = Colors.blueGrey.shade200;
-                    break;
-                  case NoteStatus.draft:
-                    label = 'Draft';
-                    color = Colors.amber.shade300;
-                    break;
-                  case NoteStatus.ready:
-                    label = 'Ready';
-                    color = Colors.blue.shade300;
-                    break;
-                  case NoteStatus.done:
-                    label = 'Done';
-                    color = Colors.green.shade300;
-                    break;
-                  case NoteStatus.dropped:
-                    label = 'Dropped';
-                    color = Colors.red.shade300;
-                    break;
-                }
-                return Container(
-                  margin: const EdgeInsets.only(left: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(label, style: const TextStyle(fontSize: 11)),
-                );
-              }
-              return ListTile(
-                leading: const Icon(Icons.note),
-                title: Row(
-                  children: [
-                    if (n.pinned) const Padding(
-                      padding: EdgeInsets.only(right: 4),
-                      child: Icon(Icons.push_pin, size: 16),
-                    ),
-                    Expanded(child: Text(n.title.isEmpty ? '(untitled)' : n.title)),
-                    statusChip(n.status),
-                  ],
-                ),
-                subtitle: Text(preview),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (value) async {
-                    if (value == 'open') {
-                      await Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => NoteEditorPage(noteId: n.id),
-                      ));
-                      if (!mounted) return;
-                      setState(_load);
-                    } else if (value == 'share') {
-                      final title = n.title.isEmpty ? '(untitled)' : n.title;
-                      final body = '$title\n\n${n.content}';
-                      shareTextAsAttachment(title, body);
-                    } else if (value == 'delete') {
-                      await ref.read(homeViewModelProvider.notifier).deleteNoteById(n.id);
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Moved to Trash')));
-                      await ref.read(homeViewModelProvider.notifier).loadData();
-                    } else if (value == 'toggle_pin') {
-                      await ref.read(homeViewModelProvider.notifier).toggleNotePinned(n.id);
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(n.pinned ? 'Unpinned' : 'Pinned')));
-                      await ref.read(homeViewModelProvider.notifier).loadData();
-                    } else if (value == 'trash_page') {
-                      if (!context.mounted) return;
-                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TrashPage()));
-                    } else if (value.startsWith('status_')) {
-                      NoteStatus? newStatus;
-                      switch (value) {
-                        case 'status_idea':
-                          newStatus = NoteStatus.idea;
-                          break;
-                        case 'status_draft':
-                          newStatus = NoteStatus.draft;
-                          break;
-                        case 'status_ready':
-                          newStatus = NoteStatus.ready;
-                          break;
-                        case 'status_done':
-                          newStatus = NoteStatus.done;
-                          break;
-                        case 'status_dropped':
-                          newStatus = NoteStatus.dropped;
-                          break;
-                      }
-                      if (newStatus != null) {
-                        await ref.read(repositoryProvider).setNoteStatus(n.id, newStatus);
-                        if (!context.mounted) return;
-                        final label = newStatus.name[0].toUpperCase() + newStatus.name.substring(1);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status: $label')));
-                        setState(_load);
-                      }
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'open', child: Text('Open')),
-                    const PopupMenuItem(value: 'share', child: Text('Share')),
-                    PopupMenuItem(value: 'toggle_pin', child: Text(n.pinned ? 'Unpin' : 'Pin')),
-                    const PopupMenuItem(value: 'delete', child: Text('Move to Trash')),
-                    const PopupMenuItem(value: 'trash_page', child: Text('Open Trash')),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(value: 'status_idea', child: Text('Set status: Idea')),
-                    const PopupMenuItem(value: 'status_draft', child: Text('Set status: Draft')),
-                    const PopupMenuItem(value: 'status_ready', child: Text('Set status: Ready')),
-                    const PopupMenuItem(value: 'status_done', child: Text('Set status: Done')),
-                    const PopupMenuItem(value: 'status_dropped', child: Text('Set status: Dropped')),
-                  ],
-                ),
-                onTap: () async {
-                  await Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => NoteEditorPage(noteId: n.id),
-                  ));
-                  if (!mounted) return;
-                  setState(_load);
-                },
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final nav = Navigator.of(context);
-          final note = await ref.read(homeViewModelProvider.notifier).createNote(widget.folder, 'New note');
-          if (!mounted) return;
-          await nav.push(MaterialPageRoute(
-            builder: (_) => NoteEditorPage(noteId: note.id),
-          ));
-          if (!mounted) return;
-          setState(_load);
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
 
-class TrashPage extends ConsumerStatefulWidget {
+class TrashPage extends ConsumerWidget {
   const TrashPage({super.key});
 
   @override
-  ConsumerState<TrashPage> createState() => _TrashPageState();
-}
-
-class _TrashPageState extends ConsumerState<TrashPage> {
-  late Future<List<Note>> _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  void _load() {
-    _future = ref.read(repositoryProvider).listTrashedNotes();
-  }
-
-  Future<void> _purge() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Empty trash?'),
-        content: const Text('Permanently delete notes in trash older than 30 days.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Empty')),
-        ],
-      ),
-    );
-    if (confirm == true) {
-      await ref.read(repositoryProvider).purgeDeleted();
-      if (!mounted) return;
-      setState(_load);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Trash cleaned')));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.read(repositoryProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Trash'),
+        title: const Text('Kosz'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_sweep_outlined),
-            tooltip: 'Empty trash',
-            onPressed: _purge,
-          )
+          TextButton.icon(
+            onPressed: () async {
+              final ok = await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Opróżnić kosz?'),
+                  content: const Text('Tych notatek nie będzie można przywrócić.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Anuluj')),
+                    FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Opróżnij')),
+                  ],
+                ),
+              );
+              if (ok == true) {
+                await repo.purgeDeleted(olderThanDays: 0);
+                // ignore: use_build_context_synchronously
+                if (context.mounted) Navigator.pop(context);
+              }
+            },
+            icon: const Icon(Icons.delete_forever_outlined),
+            label: const Text('Opróżnij'),
+          ),
         ],
       ),
       body: FutureBuilder<List<Note>>(
-        future: _future,
+        future: repo.listTrashedNotes(),
         builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
+          if (!snap.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final items = snap.data ?? const <Note>[];
-          if (items.isEmpty) return const Center(child: Text('Trash is empty'));
-          return ListView.builder(
+          final items = snap.data!;
+          if (items.isEmpty) {
+            return const _EmptyState(text: 'Kosz jest pusty');
+          }
+          return ListView.separated(
             itemCount: items.length,
-            itemBuilder: (context, index) {
-              final n = items[index];
-              final preview = n.content.length > 120 ? '${n.content.substring(0, 120)}…' : n.content;
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, i) {
+              final n = items[i];
               return ListTile(
-                leading: const Icon(Icons.note_outlined),
-                title: Text(n.title.isEmpty ? '(untitled)' : n.title),
-                subtitle: Text(preview),
-                trailing: IconButton(
-                  icon: const Icon(Icons.restore),
-                  tooltip: 'Restore',
+                title: Text(n.title.isEmpty ? '(bez tytułu)' : n.title),
+                subtitle: Text(n.updatedAt.toLocal().toString()),
+                trailing: TextButton.icon(
                   onPressed: () async {
-                    await ref.read(homeViewModelProvider.notifier).restoreNote(n.id);
-                    if (!mounted) return;
-                    setState(_load);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Note restored')));
+                    await repo.restoreNote(n.id);
+                    // ignore: use_build_context_synchronously
+                    if (context.mounted) Navigator.pop(context);
                   },
+                  icon: const Icon(Icons.restore_outlined),
+                  label: const Text('Przywróć'),
                 ),
               );
             },
@@ -952,43 +646,307 @@ class _TrashPageState extends ConsumerState<TrashPage> {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  final NoteStatus status;
-  const _StatusBadge({required this.status});
+class _SearchList extends ConsumerWidget {
+  final List<SearchResult> results;
+  const _SearchList({required this.results});
 
   @override
-  Widget build(BuildContext context) {
-    String label;
-    Color? color;
-    switch (status) {
-      case NoteStatus.idea:
-        label = 'Idea';
-        color = Colors.blueGrey.shade200;
-        break;
-      case NoteStatus.draft:
-        label = 'Draft';
-        color = Colors.amber.shade300;
-        break;
-      case NoteStatus.ready:
-        label = 'Ready';
-        color = Colors.blue.shade300;
-        break;
-      case NoteStatus.done:
-        label = 'Done';
-        color = Colors.green.shade300;
-        break;
-      case NoteStatus.dropped:
-        label = 'Dropped';
-        color = Colors.red.shade300;
-        break;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(label, style: const TextStyle(fontSize: 12)),
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (results.isEmpty) return const _EmptyState(text: 'Brak wyników');
+    return ListView.separated(
+      itemCount: results.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (context, i) {
+        final r = results[i];
+        return ListTile(
+          leading: const Icon(Icons.search),
+          title: Text(r.note.title.isEmpty ? '(bez tytułu)' : r.note.title),
+          subtitle: Text(
+            r.note.content,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: PopupMenuButton<String>(
+            tooltip: 'Menu',
+            icon: const Icon(Icons.more_vert),
+            position: PopupMenuPosition.over,
+            constraints: const BoxConstraints(minWidth: 140, maxWidth: 180),
+            onSelected: (v) async {
+              final vm = ref.read(homeViewModelProvider.notifier);
+              switch (v) {
+                case 'pin':
+                  await vm.toggleNotePinned(r.note.id);
+                  break;
+                case 'trash':
+                  await vm.deleteNoteById(r.note.id);
+                  break;
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'pin',
+                child: Row(children: [
+                  Icon(r.note.pinned ? Icons.push_pin_outlined : Icons.push_pin, size: 18),
+                  const SizedBox(width: 8),
+                  Text(r.note.pinned ? 'Odepnij' : 'Przypnij'),
+                ]),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'trash',
+                child: Row(children: [
+                  Icon(Icons.delete_outline, size: 18),
+                  SizedBox(width: 8),
+                  Text('Przenieś do kosza'),
+                ]),
+              ),
+            ],
+          ),
+           onTap: () {
+             Navigator.of(context).push(
+               MaterialPageRoute(builder: (_) => NoteEditorPage(noteId: r.note.id)),
+             );
+           },
+        );
+      },
     );
   }
 }
+
+class _HomeLists extends ConsumerWidget {
+  final List<Folder> folders;
+  final List<Note> recent;
+  const _HomeLists({required this.folders, required this.recent});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vm = ref.read(homeViewModelProvider.notifier);
+    return ListView(
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(12, 12, 12, 6),
+          child: Text('Foldery', style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+        ...folders.map((f) => ListTile(
+              leading: const Icon(Icons.folder_outlined),
+              title: Text(f.name),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => _FolderPage(folder: f)),
+                );
+              },
+            )),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(12, 12, 12, 6),
+          child: Text('Ostatnie notatki', style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+        ...recent.map((n) => Card(
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: ListTile(
+                title: Text(n.title.isEmpty ? '(bez tytułu)' : n.title),
+                subtitle: Row(
+                  children: [
+                    _StatusBadge(status: n.status),
+                    const SizedBox(width: 8),
+                    Text(n.updatedAt.toLocal().toString()),
+                  ],
+                ),
+                trailing: PopupMenuButton<String>(
+                  tooltip: 'Menu',
+                  icon: const Icon(Icons.more_vert),
+                  position: PopupMenuPosition.over,
+                  constraints: const BoxConstraints(minWidth: 140, maxWidth: 180),
+                  onSelected: (v) async {
+                    switch (v) {
+                      case 'pin':
+                        await vm.toggleNotePinned(n.id);
+                        break;
+                      case 'trash':
+                        await vm.deleteNoteById(n.id);
+                        break;
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'pin',
+                      child: Row(children: [
+                        Icon(n.pinned ? Icons.push_pin_outlined : Icons.push_pin, size: 18),
+                        const SizedBox(width: 8),
+                        Text(n.pinned ? 'Odepnij' : 'Przypnij'),
+                      ]),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'trash',
+                      child: Row(children: [
+                        Icon(Icons.delete_outline, size: 18),
+                        SizedBox(width: 8),
+                        Text('Przenieś do kosza'),
+                      ]),
+                    ),
+                  ],
+                ),
+                 onTap: () {
+                   Navigator.of(context).push(
+                     MaterialPageRoute(builder: (_) => NoteEditorPage(noteId: n.id)),
+                   );
+                 },
+               ),
+             )),
+        const SizedBox(height: 80),
+      ],
+    );
+       }
+     }
+
+     class _FolderPage extends ConsumerWidget {
+       final Folder folder;
+       const _FolderPage({required this.folder});
+   
+       @override
+       Widget build(BuildContext context, WidgetRef ref) {
+         final repo = ref.read(repositoryProvider);
+         return Scaffold(
+           appBar: AppBar(title: Text(folder.name)),
+           body: FutureBuilder<List<Note>>(
+              future: repo.listNotesInFolder(folder.id),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final items = snap.data!;
+                if (items.isEmpty) return const _EmptyState(text: 'Brak notatek w folderze');
+                return ListView.separated(
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const Divider(height: 0),
+                  itemBuilder: (context, index) {
+                    final n = items[index];
+                    return ListTile(
+                      title: Text(n.title.isEmpty ? '(bez tytułu)' : n.title),
+                      subtitle: Row(
+                        children: [
+                          _StatusBadge(status: n.status),
+                          const SizedBox(width: 8),
+                          Text(n.updatedAt.toLocal().toString()),
+                        ],
+                      ),
+                      trailing: PopupMenuButton<String>(
+                        tooltip: 'Menu',
+                        icon: const Icon(Icons.more_vert),
+                        onSelected: (v) async {
+                          final vm = ref.read(homeViewModelProvider.notifier);
+                          switch (v) {
+                            case 'pin':
+                              await vm.toggleNotePinned(n.id);
+                              break;
+                            case 'trash':
+                              await vm.deleteNoteById(n.id);
+                              break;
+                          }
+                        },
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: 'pin',
+                            child: Row(children: [
+                              Icon(n.pinned ? Icons.push_pin_outlined : Icons.push_pin, size: 18),
+                              const SizedBox(width: 8),
+                              Text(n.pinned ? 'Odepnij' : 'Przypnij'),
+                            ]),
+                          ),
+                          const PopupMenuDivider(),
+                          const PopupMenuItem(
+                            value: 'trash',
+                            child: Row(children: [
+                              Icon(Icons.delete_outline, size: 18),
+                              SizedBox(width: 8),
+                              Text('Przenieś do kosza'),
+                            ]),
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => NoteEditorPage(noteId: n.id)),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          );
+        }
+      }
+
+     class _StatusBadge extends StatelessWidget {
+       final NoteStatus status;
+       const _StatusBadge({required this.status});
+   
+       Color _color(NoteStatus s, BuildContext ctx) {
+         final cs = Theme.of(ctx).colorScheme;
+         switch (s) {
+           case NoteStatus.idea:
+             return cs.secondary;
+           case NoteStatus.draft:
+             return cs.tertiary;
+           case NoteStatus.ready:
+             return cs.primary;
+           case NoteStatus.done:
+             return Colors.green; // wyróżnienie Done
+           case NoteStatus.dropped:
+             return cs.error;
+         }
+       }
+   
+       String _label(NoteStatus s) {
+         switch (s) {
+           case NoteStatus.idea:
+             return 'POMYSŁ';
+           case NoteStatus.draft:
+             return 'SZKIC';
+           case NoteStatus.ready:
+             return 'GOTOWE';
+           case NoteStatus.done:
+             return 'ZROBIONE';
+           case NoteStatus.dropped:
+             return 'PORZUCONE';
+         }
+       }
+   
+       @override
+       Widget build(BuildContext context) {
+         return Container(
+           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+           decoration: BoxDecoration(
+             color: _color(status, context).withValues(alpha: 0.08),
+             borderRadius: BorderRadius.circular(12),
+             border: Border.all(color: _color(status, context).withValues(alpha: 0.3)),
+           ),
+           child: Text(
+             _label(status),
+             style: TextStyle(fontSize: 12, color: _color(status, context)),
+           ),
+         );
+       }
+     }
+
+     class _EmptyState extends StatelessWidget {
+       final String text;
+       const _EmptyState({required this.text});
+       @override
+       Widget build(BuildContext context) {
+         return Center(
+           child: Padding(
+             padding: const EdgeInsets.all(24.0),
+             child: Column(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 const Icon(Icons.inbox_outlined, size: 48),
+                 const SizedBox(height: 12),
+                 Text(text),
+               ],
+             ),
+           ),
+         );
+       }
+     }
