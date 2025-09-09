@@ -1,0 +1,33 @@
+name: Create GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            Changes in this release:
+            - Note editor: move ref.listen to build to avoid mis-lifecycle usage
+            - Dispose text controllers to prevent leaks
+            - Better error handling (async + UI)
+            - UI polish for AI suggestions panel
+            - DevTools config and run setup
+
+            Housekeeping:
+            - Add CI workflow for Flutter analyze/test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
