@@ -2,7 +2,7 @@ name: ideasamaapp
 description: "Fast offline-first idea notes app"
 publish_to: 'none'
 
-version: 1.0.2+2
+version: 1.0.3+3
 
 environment:
   sdk: ^3.9.2

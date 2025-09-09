@@ -33,7 +33,11 @@ class Repository {
     return folder;
   }
 
-  Future<Note> createNote(Folder folder, {required String title, String content = ''}) async {
+  Future<Note> createNote(
+    Folder folder, {
+    required String title,
+    String content = '',
+  }) async {
     final now = DateTime.now();
     final note = Note(
       id: generateId(),
@@ -74,32 +78,50 @@ class Repository {
     return note;
   }
 
-  Future<List<Folder>> listFolders({SortBy sortBy = SortBy.updatedAtDesc}) async {
+  Future<List<Folder>> listFolders({
+    SortBy sortBy = SortBy.updatedAtDesc,
+  }) async {
     final orderBy = 'pinned DESC, ${_sortToOrderBy(sortBy)}';
     final rows = await index.listFolders(orderBy: orderBy);
-    return rows.map((row) => Folder(
-      id: row['id'] as String,
-      name: row['name'] as String,
-      parentId: row['parentId'] as String?,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(row['createdAt'] as int),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(row['updatedAt'] as int),
-      pinned: ((row['pinned'] ?? 0) as int) == 1,
-    )).toList();
+    return rows
+        .map(
+          (row) => Folder(
+            id: row['id'] as String,
+            name: row['name'] as String,
+            parentId: row['parentId'] as String?,
+            createdAt: DateTime.fromMillisecondsSinceEpoch(
+              row['createdAt'] as int,
+            ),
+            updatedAt: DateTime.fromMillisecondsSinceEpoch(
+              row['updatedAt'] as int,
+            ),
+            pinned: ((row['pinned'] ?? 0) as int) == 1,
+          ),
+        )
+        .toList();
   }
 
-  Future<List<Note>> listRecentNotes({int limit = 20, bool onlyLast7Days = false, NoteStatus? status}) async {
+  Future<List<Note>> listRecentNotes({
+    int limit = 20,
+    bool onlyLast7Days = false,
+    NoteStatus? status,
+  }) async {
     final rows = await index.listRecentNotes(limit: limit);
-    var notes = rows.map((row) => Note(
-      id: row['id'] as String,
-      folderId: row['folderId'] as String,
-      title: row['title'] as String,
-      content: row['contentPreview'] as String, // Preview only for listing
-      createdAt: DateTime.fromMillisecondsSinceEpoch(row['createdAt'] as int),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(row['updatedAt'] as int),
-      status: _parseStatus(row['status'] as String?),
-      pinned: ((row['pinned'] ?? 0) as int) == 1,
-      deletedAt: (row['deletedAt'] != null) ? DateTime.fromMillisecondsSinceEpoch(row['deletedAt'] as int) : null,
-    ));
+    var notes = rows.map(
+      (row) => Note(
+        id: row['id'] as String,
+        folderId: row['folderId'] as String,
+        title: row['title'] as String,
+        content: row['contentPreview'] as String, // Preview only for listing
+        createdAt: DateTime.fromMillisecondsSinceEpoch(row['createdAt'] as int),
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(row['updatedAt'] as int),
+        status: _parseStatus(row['status'] as String?),
+        pinned: ((row['pinned'] ?? 0) as int) == 1,
+        deletedAt: (row['deletedAt'] != null)
+            ? DateTime.fromMillisecondsSinceEpoch(row['deletedAt'] as int)
+            : null,
+      ),
+    );
     if (status != null) {
       notes = notes.where((n) => n.status == status);
     }
@@ -111,17 +133,29 @@ class Repository {
   Future<List<SearchResult>> searchNotes(String query) async {
     if (query.trim().isEmpty) return [];
     final rows = await index.searchNotes(query);
-    return rows.map((row) => SearchResult(Note(
-      id: row['id'] as String,
-      folderId: row['folderId'] as String,
-      title: row['title'] as String,
-      content: row['contentPreview'] as String,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(row['createdAt'] as int),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(row['updatedAt'] as int),
-      status: _parseStatus(row['status'] as String?),
-      pinned: ((row['pinned'] ?? 0) as int) == 1,
-      deletedAt: (row['deletedAt'] != null) ? DateTime.fromMillisecondsSinceEpoch(row['deletedAt'] as int) : null,
-    ))).toList();
+    return rows
+        .map(
+          (row) => SearchResult(
+            Note(
+              id: row['id'] as String,
+              folderId: row['folderId'] as String,
+              title: row['title'] as String,
+              content: row['contentPreview'] as String,
+              createdAt: DateTime.fromMillisecondsSinceEpoch(
+                row['createdAt'] as int,
+              ),
+              updatedAt: DateTime.fromMillisecondsSinceEpoch(
+                row['updatedAt'] as int,
+              ),
+              status: _parseStatus(row['status'] as String?),
+              pinned: ((row['pinned'] ?? 0) as int) == 1,
+              deletedAt: (row['deletedAt'] != null)
+                  ? DateTime.fromMillisecondsSinceEpoch(row['deletedAt'] as int)
+                  : null,
+            ),
+          ),
+        )
+        .toList();
   }
 
   Future<Note> loadNote(String noteId) async {
@@ -135,7 +169,8 @@ class Repository {
       content = await index.getNoteContent(noteId) ?? '';
     } else {
       final folderMeta = await index.getFolder(meta['folderId'] as String);
-      if (folderMeta == null) throw Exception('Folder not found for note: $noteId');
+      if (folderMeta == null)
+        throw Exception('Folder not found for note: $noteId');
       final fileData = await fs.readNoteFile(
         folderId: meta['folderId'] as String,
         folderName: folderMeta['name'] as String,
@@ -154,18 +189,38 @@ class Repository {
       updatedAt: DateTime.fromMillisecondsSinceEpoch(meta['updatedAt'] as int),
       status: _parseStatus(meta['status'] as String?),
       pinned: ((meta['pinned'] ?? 0) as int) == 1,
-      deletedAt: (meta['deletedAt'] != null) ? DateTime.fromMillisecondsSinceEpoch(meta['deletedAt'] as int) : null,
+      deletedAt: (meta['deletedAt'] != null)
+          ? DateTime.fromMillisecondsSinceEpoch(meta['deletedAt'] as int)
+          : null,
     );
   }
 
   Future<void> saveNote(Note note) async {
     if (kIsWeb) {
+      // Ensure we never accidentally overwrite non-empty content with empty string
+      String contentToPersist = note.content;
+      final existing = await index.getNoteContent(note.id) ?? '';
+      if (contentToPersist.isEmpty && existing.isNotEmpty) {
+        contentToPersist = existing;
+      }
+
+      // 1) Zapis treści do IndexedDB
       await index.updateNoteContent(
         id: note.id,
-        content: note.content,
+        content: contentToPersist,
         updatedAt: note.updatedAt,
       );
-      final preview = note.content.length > 140 ? note.content.substring(0, 140) : note.content;
+      // 2) Weryfikacja: odczytaj i porównaj
+      final stored = await index.getNoteContent(note.id) ?? '';
+      if (stored != contentToPersist) {
+        throw Exception(
+          'Weryfikacja zapisu (Web) nie powiodła się: treść różni się od źródła',
+        );
+      }
+      // 3) Aktualizacja metadanych (z finalnym contentem)
+      final preview = contentToPersist.length > 140
+          ? contentToPersist.substring(0, 140)
+          : contentToPersist;
       await index.updateNoteMeta(
         id: note.id,
         title: note.title,
@@ -176,17 +231,53 @@ class Repository {
     }
 
     final folderMeta = await index.getFolder(note.folderId);
-    if (folderMeta == null) throw Exception('Folder not found: ${note.folderId}');
+    if (folderMeta == null)
+      throw Exception('Folder not found: ${note.folderId}');
 
+    // Read existing content to guard against accidental wipe
+    final existingFileData = await fs.readNoteFile(
+      folderId: note.folderId,
+      folderName: folderMeta['name'] as String,
+      noteId: note.id,
+    );
+    String existingContent = existingFileData['content'] ?? '';
+    String contentToPersist = note.content;
+    if (contentToPersist.isEmpty && existingContent.isNotEmpty) {
+      contentToPersist = existingContent;
+    }
+
+    // 1) Zapis pliku na dysku (title + pusta linia + content)
     await fs.saveNoteFile(
       folderId: note.folderId,
       folderName: folderMeta['name'] as String,
       noteId: note.id,
       title: note.title,
-      content: note.content,
+      content: contentToPersist,
     );
 
-    final preview = note.content.length > 140 ? note.content.substring(0, 140) : note.content;
+    // 2) Weryfikacja: odczytaj i porównaj (z uwzględnieniem normalizacji w zapisie)
+    final fileData = await fs.readNoteFile(
+      folderId: note.folderId,
+      folderName: folderMeta['name'] as String,
+      noteId: note.id,
+    );
+    final String persistedTitle = fileData['title'] ?? '';
+    final String persistedContent = fileData['content'] ?? '';
+    // Normalizacja w taki sam sposób jak podczas zapisu (usuwamy wiodące nowe linie)
+    final String expectedContent = contentToPersist.replaceFirst(
+      RegExp(r'^\r?\n+'),
+      '',
+    );
+    if (persistedTitle != note.title || persistedContent != expectedContent) {
+      throw Exception(
+        'Weryfikacja zapisu (Desktop) nie powiodła się: tytuł/treść różnią się od źródła',
+      );
+    }
+
+    // 3) Aktualizacja metadanych w indeksie na podstawie finalnej treści
+    final preview = contentToPersist.length > 140
+        ? contentToPersist.substring(0, 140)
+        : contentToPersist;
     await index.updateNoteMeta(
       id: note.id,
       title: note.title,
@@ -213,16 +304,26 @@ class Repository {
   }
 
   Future<void> purgeDeleted({int olderThanDays = 30}) async {
-    final threshold = DateTime.now().subtract(Duration(days: olderThanDays)).millisecondsSinceEpoch;
+    final threshold = DateTime.now()
+        .subtract(Duration(days: olderThanDays))
+        .millisecondsSinceEpoch;
     await index.purgeDeletedNotes(threshold);
   }
 
   Future<void> setNoteStatus(String noteId, NoteStatus status) async {
-    await index.setNoteStatus(id: noteId, status: status.name, updatedAt: DateTime.now());
+    await index.setNoteStatus(
+      id: noteId,
+      status: status.name,
+      updatedAt: DateTime.now(),
+    );
   }
 
   Future<void> setNotePinned(String noteId, bool pinned) async {
-    await index.setNotePinned(id: noteId, pinned: pinned, updatedAt: DateTime.now());
+    await index.setNotePinned(
+      id: noteId,
+      pinned: pinned,
+      updatedAt: DateTime.now(),
+    );
   }
 
   Future<void> deleteFolder(String folderId) async {
@@ -243,15 +344,27 @@ class Repository {
     if (folderMeta == null) return;
     final oldName = folderMeta['name'] as String;
     if (!kIsWeb) {
-      await fs.renameFolderDir(folderId: folderId, oldName: oldName, newName: newName);
+      await fs.renameFolderDir(
+        folderId: folderId,
+        oldName: oldName,
+        newName: newName,
+      );
     }
-    await index.updateFolderName(id: folderId, name: newName, updatedAt: DateTime.now());
+    await index.updateFolderName(
+      id: folderId,
+      name: newName,
+      updatedAt: DateTime.now(),
+    );
   }
 
   Future<void> setFolderPinned(String folderId, bool pinned) async {
-    await index.setFolderPinned(id: folderId, pinned: pinned, updatedAt: DateTime.now());
+    await index.setFolderPinned(
+      id: folderId,
+      pinned: pinned,
+      updatedAt: DateTime.now(),
+    );
   }
-  
+
   Future<Folder> getOrCreateFolderByName(String name) async {
     final rows = await index.listFolders(orderBy: 'updatedAt DESC');
     Map<String, Object?>? found;
@@ -267,28 +380,46 @@ class Repository {
         id: found['id'] as String,
         name: found['name'] as String,
         parentId: found['parentId'] as String?,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(found['createdAt'] as int),
-        updatedAt: DateTime.fromMillisecondsSinceEpoch(found['updatedAt'] as int),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(
+          found['createdAt'] as int,
+        ),
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(
+          found['updatedAt'] as int,
+        ),
         pinned: ((found['pinned'] ?? 0) as int) == 1,
       );
     }
     return createFolder(name);
   }
+
   // NEW: list notes inside a folder
-  Future<List<Note>> listNotesInFolder(String folderId, {SortBy sortBy = SortBy.updatedAtDesc}) async {
+  Future<List<Note>> listNotesInFolder(
+    String folderId, {
+    SortBy sortBy = SortBy.updatedAtDesc,
+  }) async {
     final orderBy = _noteSortToOrderBy(sortBy);
     final rows = await index.listNotes(folderId, orderBy);
-    return rows.map((row) => Note(
-      id: row['id'] as String,
-      folderId: row['folderId'] as String,
-      title: row['title'] as String,
-      content: row['contentPreview'] as String,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(row['createdAt'] as int),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(row['updatedAt'] as int),
-      status: _parseStatus(row['status'] as String?),
-      pinned: ((row['pinned'] ?? 0) as int) == 1,
-      deletedAt: (row['deletedAt'] != null) ? DateTime.fromMillisecondsSinceEpoch(row['deletedAt'] as int) : null,
-    )).toList();
+    return rows
+        .map(
+          (row) => Note(
+            id: row['id'] as String,
+            folderId: row['folderId'] as String,
+            title: row['title'] as String,
+            content: row['contentPreview'] as String,
+            createdAt: DateTime.fromMillisecondsSinceEpoch(
+              row['createdAt'] as int,
+            ),
+            updatedAt: DateTime.fromMillisecondsSinceEpoch(
+              row['updatedAt'] as int,
+            ),
+            status: _parseStatus(row['status'] as String?),
+            pinned: ((row['pinned'] ?? 0) as int) == 1,
+            deletedAt: (row['deletedAt'] != null)
+                ? DateTime.fromMillisecondsSinceEpoch(row['deletedAt'] as int)
+                : null,
+          ),
+        )
+        .toList();
   }
 
   String _sortToOrderBy(SortBy sortBy) {
@@ -328,20 +459,32 @@ class Repository {
     }
   }
 
-  Future<List<Note>> listTrashedNotes({SortBy sortBy = SortBy.updatedAtDesc}) async {
+  Future<List<Note>> listTrashedNotes({
+    SortBy sortBy = SortBy.updatedAtDesc,
+  }) async {
     final orderBy = _noteSortToOrderBy(sortBy);
     final rows = await index.listTrashedNotes(orderBy: orderBy);
-    return rows.map((row) => Note(
-      id: row['id'] as String,
-      folderId: row['folderId'] as String,
-      title: row['title'] as String,
-      content: row['contentPreview'] as String,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(row['createdAt'] as int),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(row['updatedAt'] as int),
-      status: _parseStatus(row['status'] as String?),
-      pinned: ((row['pinned'] ?? 0) as int) == 1,
-      deletedAt: (row['deletedAt'] != null) ? DateTime.fromMillisecondsSinceEpoch(row['deletedAt'] as int) : null,
-    )).toList();
+    return rows
+        .map(
+          (row) => Note(
+            id: row['id'] as String,
+            folderId: row['folderId'] as String,
+            title: row['title'] as String,
+            content: row['contentPreview'] as String,
+            createdAt: DateTime.fromMillisecondsSinceEpoch(
+              row['createdAt'] as int,
+            ),
+            updatedAt: DateTime.fromMillisecondsSinceEpoch(
+              row['updatedAt'] as int,
+            ),
+            status: _parseStatus(row['status'] as String?),
+            pinned: ((row['pinned'] ?? 0) as int) == 1,
+            deletedAt: (row['deletedAt'] != null)
+                ? DateTime.fromMillisecondsSinceEpoch(row['deletedAt'] as int)
+                : null,
+          ),
+        )
+        .toList();
   }
 }
 

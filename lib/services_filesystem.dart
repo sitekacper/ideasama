@@ -49,6 +49,20 @@ class FileSystemService {
     return File(p.join(dir.path, '$noteId.txt'));
   }
 
+  // -- helpers --
+  /// Ensure we always store exactly one empty line between title and content.
+  /// Trims any leading new lines from content to avoid accumulating blank lines
+  /// when saving multiple times.
+  String _normalizeContentForWrite(String content) {
+    return content.replaceFirst(RegExp(r'^\r?\n+'), '');
+  }
+
+  /// Compose final file payload from title and content with a single blank line separator.
+  String _composePayload({required String title, required String content}) {
+    final body = _normalizeContentForWrite(content);
+    return '$title\n\n$body';
+  }
+
   Future<File> createNoteFile({
     required String folderId,
     required String folderName,
@@ -60,7 +74,12 @@ class FileSystemService {
       throw UnsupportedError('FileSystemService is not supported on Web');
     }
     final file = await _noteFile(folderId, folderName, noteId);
-    await file.writeAsString('$title\n\n$content');
+    // Write title + one empty line + content
+    await file.writeAsString(
+      _composePayload(title: title, content: content),
+      mode: FileMode.write,
+      flush: true,
+    );
     return file;
   }
 
@@ -72,7 +91,11 @@ class FileSystemService {
     required String content,
   }) async {
     final file = await _noteFile(folderId, folderName, noteId);
-    await file.writeAsString('$title\n\n$content');
+    await file.writeAsString(
+      _composePayload(title: title, content: content),
+      mode: FileMode.write,
+      flush: true,
+    );
   }
 
   Future<void> deleteNoteFile({
@@ -102,7 +125,12 @@ class FileSystemService {
     final text = await file.readAsString();
     final lines = text.split(RegExp(r'\r?\n'));
     final String title = lines.isNotEmpty ? lines.first : '';
-    final String content = lines.length > 1 ? lines.sublist(1).join('\n') : '';
+    // Skip a single blank line after the title if present (our separator)
+    int startIndex = 1;
+    if (lines.length >= 2 && lines[1].trim().isEmpty) {
+      startIndex = 2;
+    }
+    final String content = lines.length > startIndex ? lines.sublist(startIndex).join('\n') : '';
     return {'title': title, 'content': content};
   }
 
@@ -117,7 +145,11 @@ class FileSystemService {
       throw UnsupportedError('FileSystemService is not supported on Web');
     }
     final file = await _noteFile(folderId, folderName, noteId);
-    await file.writeAsString('$title\n\n$content');
+    await file.writeAsString(
+      _composePayload(title: title, content: content),
+      mode: FileMode.write,
+      flush: true,
+    );
   }
 
   Future<void> deleteFolderDir({

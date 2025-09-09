@@ -383,24 +383,23 @@ class NoteEditorViewModel extends StateNotifier<NoteEditorState> {
     n.updatedAt = DateTime.now();
     state = state.copyWith(note: n, hasUnsavedChanges: true);
     _scheduleAutosave();
-    if (!_suppressAutoOnce) {
-      _scheduleAutoAi();
-    } else {
-      _suppressAutoOnce = false;
-    }
+    // Auto‑AI wyłączone: generowanie tylko po kliknięciu przycisków w UI
   }
 
   void _scheduleAutosave() {
     _saveDebounce?.cancel();
-    _saveDebounce = Timer(const Duration(seconds: 2), () {
+    _saveDebounce = Timer(const Duration(milliseconds: 500), () {
       forceSave();
     });
   }
 
-  Future<void> forceSave() async {
+  /// Zapisuje aktualny stan notatki do repozytorium.
+  /// Zwraca true, jeśli zapis zakończył się powodzeniem (bez wyjątków),
+  /// w przeciwnym razie ustawia state.error i zwraca false.
+  Future<bool> forceSave() async {
     _saveDebounce?.cancel();
     final n = state.note;
-    if (n == null) return;
+    if (n == null) return false;
     try {
       final toSave = Note(
         id: n.id,
@@ -415,8 +414,10 @@ class NoteEditorViewModel extends StateNotifier<NoteEditorState> {
       );
       await _repository.saveNote(toSave);
       state = state.copyWith(note: toSave, hasUnsavedChanges: false);
+      return true;
     } catch (e) {
       state = state.copyWith(error: e.toString());
+      return false;
     }
   }
 

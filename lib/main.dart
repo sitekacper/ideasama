@@ -31,9 +31,7 @@ class IdeaApp extends StatelessWidget {
           hoverElevation: 0,
           disabledElevation: 0,
         ),
-        bottomAppBarTheme: const BottomAppBarThemeData(
-          elevation: 0,
-        ),
+        bottomAppBarTheme: const BottomAppBarThemeData(elevation: 0),
         inputDecorationTheme: const InputDecorationTheme(
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
@@ -89,19 +87,22 @@ class HomePage extends ConsumerWidget {
                       prefixIcon: const Icon(Icons.search),
                       border: InputBorder.none,
                       filled: true,
-                      fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      fillColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                     ),
                     onChanged: vm.setSearchQuery,
                   ),
                 ),
                 if (state.searchQuery.isNotEmpty)
-                  Expanded(
-                    child: _SearchList(results: state.searchResults),
-                  )
+                  Expanded(child: _SearchList(results: state.searchResults))
                 else
                   Expanded(
                     child: (state.folders.isEmpty && state.recentNotes.isEmpty)
-                        ? const _EmptyState(text: 'Brak notatek. Dodaj pierwszą za pomocą przycisku +')
+                        ? const _EmptyState(
+                            text:
+                                'Brak notatek. Dodaj pierwszą za pomocą przycisku +',
+                          )
                         : _HomeLists(
                             folders: state.folders,
                             recent: state.recentNotes,
@@ -124,7 +125,9 @@ class HomePage extends ConsumerWidget {
                     showDragHandle: true,
                     useSafeArea: true,
                     shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
                     ),
                     builder: (_) {
                       final textController = TextEditingController();
@@ -135,7 +138,9 @@ class HomePage extends ConsumerWidget {
                             ListTile(
                               leading: const Icon(Icons.note_add_outlined),
                               title: const Text('Szybka notatka'),
-                              subtitle: const Text('Utwórz nową notatkę i przejdź do edycji'),
+                              subtitle: const Text(
+                                'Utwórz nową notatkę i przejdź do edycji',
+                              ),
                               onTap: () async {
                                 Navigator.pop(context);
                                 final repo = ref.read(repositoryProvider);
@@ -144,18 +149,28 @@ class HomePage extends ConsumerWidget {
                                 if (state.folders.isNotEmpty) {
                                   folder = state.folders.first;
                                 } else {
-                                  folder = await ref.read(homeViewModelProvider.notifier).createFolder('Quick Ideas');
+                                  folder = await ref
+                                      .read(homeViewModelProvider.notifier)
+                                      .createFolder('Quick Ideas');
                                 }
-                                final note = await repo.createNote(folder, title: 'Nowa notatka');
+                                final note = await repo.createNote(
+                                  folder,
+                                  title: 'Nowa notatka',
+                                );
                                 if (context.mounted) {
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => NoteEditorPage(noteId: note.id)),
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          NoteEditorPage(noteId: note.id),
+                                    ),
                                   );
                                 }
                               },
                             ),
                             ListTile(
-                              leading: const Icon(Icons.create_new_folder_outlined),
+                              leading: const Icon(
+                                Icons.create_new_folder_outlined,
+                              ),
                               title: const Text('Nowy folder'),
                               onTap: () async {
                                 Navigator.pop(context);
@@ -168,20 +183,38 @@ class HomePage extends ConsumerWidget {
                                       content: TextField(
                                         controller: textController,
                                         autofocus: true,
-                                        decoration: const InputDecoration(hintText: 'Wpisz nazwę folderu'),
+                                        decoration: const InputDecoration(
+                                          hintText: 'Wpisz nazwę folderu',
+                                        ),
                                       ),
                                       actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Anuluj')),
-                                        FilledButton(onPressed: () => Navigator.pop(ctx, textController.text.trim()), child: const Text('Utwórz')),
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx),
+                                          child: const Text('Anuluj'),
+                                        ),
+                                        FilledButton(
+                                          onPressed: () => Navigator.pop(
+                                            ctx,
+                                            textController.text.trim(),
+                                          ),
+                                          child: const Text('Utwórz'),
+                                        ),
                                       ],
                                     );
                                   },
                                 );
-                                if (input != null && input.isNotEmpty) name = input;
-                                final folder = await ref.read(homeViewModelProvider.notifier).createFolder(name);
+                                if (input != null && input.isNotEmpty)
+                                  name = input;
+                                final folder = await ref
+                                    .read(homeViewModelProvider.notifier)
+                                    .createFolder(name);
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Utworzono folder: ${folder.name}')),
+                                    SnackBar(
+                                      content: Text(
+                                        'Utworzono folder: ${folder.name}',
+                                      ),
+                                    ),
                                   );
                                 }
                               },
@@ -223,7 +256,10 @@ class HomePage extends ConsumerWidget {
                       tooltip: 'Filtr statusu',
                       icon: const Icon(Icons.filter_list, size: 20),
                       position: PopupMenuPosition.over,
-                      constraints: const BoxConstraints(minWidth: 160, maxWidth: 200),
+                      constraints: const BoxConstraints(
+                        minWidth: 160,
+                        maxWidth: 200,
+                      ),
                       offset: const Offset(0, -200),
                       onSelected: (value) {
                         switch (value) {
@@ -252,14 +288,29 @@ class HomePage extends ConsumerWidget {
                       tooltip: 'Sortowanie',
                       icon: const Icon(Icons.sort, size: 20),
                       position: PopupMenuPosition.over,
-                      constraints: const BoxConstraints(minWidth: 160, maxWidth: 200),
+                      constraints: const BoxConstraints(
+                        minWidth: 160,
+                        maxWidth: 200,
+                      ),
                       offset: const Offset(0, -200),
                       onSelected: (value) => vm.setSort(value),
                       itemBuilder: (ctx) => const [
-                        PopupMenuItem(value: 'date_desc', child: Text('Najnowsze')),
-                        PopupMenuItem(value: 'date_asc', child: Text('Najstarsze')),
-                        PopupMenuItem(value: 'title_asc', child: Text('Tytuł A-Z')),
-                        PopupMenuItem(value: 'title_desc', child: Text('Tytuł Z-A')),
+                        PopupMenuItem(
+                          value: 'date_desc',
+                          child: Text('Najnowsze'),
+                        ),
+                        PopupMenuItem(
+                          value: 'date_asc',
+                          child: Text('Najstarsze'),
+                        ),
+                        PopupMenuItem(
+                          value: 'title_asc',
+                          child: Text('Tytuł A-Z'),
+                        ),
+                        PopupMenuItem(
+                          value: 'title_desc',
+                          child: Text('Tytuł Z-A'),
+                        ),
                       ],
                     ),
                     IconButton(
@@ -299,14 +350,40 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
     super.initState();
     // Nasłuchiwanie zmian użytkownika i aktualizacja VM bez pętli zwrotnej
     _titleController.addListener(() {
-      if (_isApplyingExternalChange) return;
-      final vm = ref.read(noteEditorViewModelProvider(widget.noteId).notifier);
-      vm.updateTitle(_titleController.text);
+      if (_isApplyingExternalChange || !_controllersInitialized) return;
+      final provider = noteEditorViewModelProvider(widget.noteId);
+      final current = ref.read(provider).note;
+      final newText = _titleController.text;
+      if (current != null && current.title == newText) return;
+      ref.read(provider.notifier).updateTitle(newText);
     });
     _contentController.addListener(() {
-      if (_isApplyingExternalChange) return;
-      final vm = ref.read(noteEditorViewModelProvider(widget.noteId).notifier);
-      vm.updateContent(_contentController.text);
+      if (_isApplyingExternalChange || !_controllersInitialized) return;
+      final provider = noteEditorViewModelProvider(widget.noteId);
+      final current = ref.read(provider).note;
+      final newText = _contentController.text;
+      if (current != null && current.content == newText) return;
+      ref.read(provider.notifier).updateContent(newText);
+    });
+
+    // Jednorazowa synchronizacja po pierwszej klatce, jeżeli dane notatki są już dostępne
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = noteEditorViewModelProvider(widget.noteId);
+      final state = ref.read(provider);
+      final newNote = state.note;
+      if (newNote != null && !_controllersInitialized) {
+        _isApplyingExternalChange = true;
+        _titleController.value = TextEditingValue(
+          text: newNote.title,
+          selection: TextSelection.collapsed(offset: newNote.title.length),
+        );
+        _contentController.value = TextEditingValue(
+          text: newNote.content,
+          selection: TextSelection.collapsed(offset: newNote.content.length),
+        );
+        _isApplyingExternalChange = false;
+        _controllersInitialized = true;
+      }
     });
   }
 
@@ -320,7 +397,10 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
   @override
   Widget build(BuildContext context) {
     // Synchronizuj kontrolery z ZEWNĘTRZNYMI zmianami notatki (np. AI, forceSave, replace)
-    ref.listen<NoteEditorState>(noteEditorViewModelProvider(widget.noteId), (prev, next) {
+    ref.listen<NoteEditorState>(noteEditorViewModelProvider(widget.noteId), (
+      prev,
+      next,
+    ) {
       final newNote = next.note;
       if (newNote == null) return;
       if (!_controllersInitialized) {
@@ -362,13 +442,20 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
     });
 
     // Jedno źródło SnackBarów błędów (bez duplikatów przy rebuildach)
-    ref.listen<NoteEditorState>(noteEditorViewModelProvider(widget.noteId), (prev, next) {
+    ref.listen<NoteEditorState>(noteEditorViewModelProvider(widget.noteId), (
+      prev,
+      next,
+    ) {
       final err = next.error;
       if (err != null && err.isNotEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(err)));
         }
-        ref.read(noteEditorViewModelProvider(widget.noteId).notifier).dismissError();
+        ref
+            .read(noteEditorViewModelProvider(widget.noteId).notifier)
+            .dismissError();
       }
     });
 
@@ -376,151 +463,246 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
     final vm = ref.read(noteEditorViewModelProvider(widget.noteId).notifier);
     final note = state.note;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(note?.title ?? 'Edytor'),
-        actions: [
-          IconButton(
-            tooltip: 'Udostępnij',
-            icon: const Icon(Icons.ios_share),
-            onPressed: () async {
-              final text = note?.content.trim() ?? '';
-              if (text.isEmpty) return;
-              await shareTextAsAttachment(
-                context,
-                (note?.title ?? 'notatka').trim(),
-                text,
-              );
-            },
-          ),
-          // Ustawienia AI przeniesione do backendu (Cloudflare Worker), ukrywamy przycisk w UI
-          const SizedBox.shrink(),
-          PopupMenuButton<String>(
-            tooltip: 'Menu notatki',
-            position: PopupMenuPosition.over,
-            constraints: const BoxConstraints(minWidth: 140, maxWidth: 180),
-            onSelected: (v) async {
-              switch (v) {
-                case 'pin':
-                  await vm.togglePinned();
-                  break;
-                case 'idea':
-                  await vm.setStatus(NoteStatus.idea);
-                  break;
-                case 'draft':
-                  await vm.setStatus(NoteStatus.draft);
-                  break;
-                case 'ready':
-                  await vm.setStatus(NoteStatus.ready);
-                  break;
-                case 'done':
-                  await vm.setStatus(NoteStatus.done);
-                  break;
-                case 'dropped':
-                  await vm.setStatus(NoteStatus.dropped);
-                  break;
-                case 'trash':
-                  await vm.deleteCurrent();
-                  if (context.mounted) Navigator.pop(context);
-                  break;
-              }
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: 'pin',
-                child: Row(children: [
-                  Icon((note?.pinned ?? false) ? Icons.push_pin_outlined : Icons.push_pin, size: 18),
-                  const SizedBox(width: 8),
-                  Text((note?.pinned ?? false) ? 'Odepnij' : 'Przypnij'),
-                ]),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(value: 'idea', child: Text('Status: Pomysły')),
-              const PopupMenuItem(value: 'draft', child: Text('Status: Szkice')),
-              const PopupMenuItem(value: 'ready', child: Text('Status: Gotowe')),
-              const PopupMenuItem(value: 'done', child: Text('Status: Zrobione')),
-              const PopupMenuItem(value: 'dropped', child: Text('Status: Porzucone')),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: 'trash',
-                child: Row(children: [
-                  Icon(Icons.delete_outline, size: 18),
-                  SizedBox(width: 8),
-                  Text('Przenieś do kosza'),
-                ]),
-              ),
-            ],
-          ),
-        ],
-      ),
-      body: note == null
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: TextFormField(
-                    controller: _titleController,
-                    decoration: const InputDecoration(
-                      hintText: 'Tytuł (opcjonalny)',
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: TextFormField(
-                      controller: _contentController,
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        hintText: 'Treść notatki...',
+    return WillPopScope(
+      onWillPop: () async {
+        final vm = ref.read(
+          noteEditorViewModelProvider(widget.noteId).notifier,
+        );
+        final currentState = ref.read(noteEditorViewModelProvider(widget.noteId));
+        final note = currentState.note;
+        // Take current controller values
+        String newTitle = _titleController.text;
+        String newContent = _contentController.text;
+        // Do not wipe content: if controller has empty content but note has some, keep existing
+        if ((newContent.isEmpty) && (note?.content.isNotEmpty ?? false)) {
+          newContent = note!.content;
+        }
+        if (note != null) {
+          if (note.title != newTitle) vm.updateTitle(newTitle);
+          if (note.content != newContent) vm.updateContent(newContent);
+        }
+        final ok = await vm.forceSave();
+        if (!ok && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Błąd zapisu – sprawdź dziennik błędów'),
+            ),
+          );
+        }
+        return true;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(note?.title ?? 'Edytor'),
+          actions: [
+            IconButton(
+              tooltip: 'Udostępnij',
+              icon: const Icon(Icons.ios_share),
+              onPressed: () async {
+                final text = note?.content.trim() ?? '';
+                if (text.isEmpty) return;
+                await shareTextAsAttachment(
+                  context,
+                  (note?.title ?? 'notatka').trim(),
+                  text,
+                );
+              },
+            ),
+            IconButton(
+              tooltip: 'Zapisz',
+              icon: const Icon(Icons.save_outlined),
+              onPressed: () async {
+                final vm = ref.read(
+                  noteEditorViewModelProvider(widget.noteId).notifier,
+                );
+                final currentState = ref.read(
+                  noteEditorViewModelProvider(widget.noteId),
+                );
+                final note = currentState.note;
+                String newTitle = _titleController.text;
+                String newContent = _contentController.text;
+                if ((newContent.isEmpty) && (note?.content.isNotEmpty ?? false)) {
+                  newContent = note!.content;
+                }
+                if (note != null) {
+                  if (note.title != newTitle) vm.updateTitle(newTitle);
+                  if (note.content != newContent) vm.updateContent(newContent);
+                }
+                final ok = await vm.forceSave();
+                if (!mounted) return;
+                if (ok) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('Zapisano')));
+                }
+              },
+            ),
+            // Ustawienia AI przeniesione do backendu (Cloudflare Worker), ukrywamy przycisk w UI
+            const SizedBox.shrink(),
+            PopupMenuButton<String>(
+              tooltip: 'Menu notatki',
+              position: PopupMenuPosition.over,
+              constraints: const BoxConstraints(minWidth: 140, maxWidth: 180),
+              onSelected: (v) async {
+                switch (v) {
+                  case 'pin':
+                    await vm.togglePinned();
+                    break;
+                  case 'idea':
+                    await vm.setStatus(NoteStatus.idea);
+                    break;
+                  case 'draft':
+                    await vm.setStatus(NoteStatus.draft);
+                    break;
+                  case 'ready':
+                    await vm.setStatus(NoteStatus.ready);
+                    break;
+                  case 'done':
+                    await vm.setStatus(NoteStatus.done);
+                    break;
+                  case 'dropped':
+                    await vm.setStatus(NoteStatus.dropped);
+                    break;
+                  case 'trash':
+                    await vm.deleteCurrent();
+                    if (context.mounted) Navigator.pop(context);
+                    break;
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'pin',
+                  child: Row(
+                    children: [
+                      Icon(
+                        (note?.pinned ?? false)
+                            ? Icons.push_pin_outlined
+                            : Icons.push_pin,
+                        size: 18,
                       ),
-                      maxLines: null,
-                      keyboardType: TextInputType.multiline,
-                    ),
+                      const SizedBox(width: 8),
+                      Text((note?.pinned ?? false) ? 'Odepnij' : 'Przypnij'),
+                    ],
                   ),
                 ),
-                if (state.suggestions.isNotEmpty)
-                  Container(
-                    width: double.infinity,
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'idea',
+                  child: Text('Status: Pomysły'),
+                ),
+                const PopupMenuItem(
+                  value: 'draft',
+                  child: Text('Status: Szkice'),
+                ),
+                const PopupMenuItem(
+                  value: 'ready',
+                  child: Text('Status: Gotowe'),
+                ),
+                const PopupMenuItem(
+                  value: 'done',
+                  child: Text('Status: Zrobione'),
+                ),
+                const PopupMenuItem(
+                  value: 'dropped',
+                  child: Text('Status: Porzucone'),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'trash',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline, size: 18),
+                      SizedBox(width: 8),
+                      Text('Przenieś do kosza'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        body: note == null
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  Padding(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+                    child: TextFormField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(
+                        hintText: 'Tytuł (opcjonalny)',
+                        border: InputBorder.none,
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text('Sugestie AI'),
-                            const Spacer(),
-                            TextButton.icon(
-                              onPressed: vm.toggleSuggestionsPanel,
-                              icon: Icon(state.showSuggestions ? Icons.expand_less : Icons.expand_more),
-                              label: Text(state.showSuggestions ? 'Zwiń' : 'Rozwiń'),
-                            ),
-                            const SizedBox(width: 8),
-                            TextButton.icon(
-                              onPressed: vm.applyAllAppend,
-                              icon: const Icon(Icons.playlist_add),
-                              label: const Text('Dodaj wszystkie'),
-                            ),
-                            TextButton.icon(
-                              onPressed: vm.discardAllSuggestions,
-                              icon: const Icon(Icons.clear_all),
-                              label: const Text('Odrzuć wszystkie'),
-                            ),
-                          ],
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: TextFormField(
+                        controller: _contentController,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'Treść notatki...',
                         ),
-                        if (state.showSuggestions) ...[
-                          const SizedBox(height: 8),
-                          ...state.suggestions.map((s) => Card(
+                        maxLines: null,
+                        keyboardType: TextInputType.multiline,
+                      ),
+                    ),
+                  ),
+                  if (state.suggestions.isNotEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        border: Border(
+                          top: BorderSide(
+                            color: Theme.of(context).dividerColor,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text('Sugestie AI'),
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: vm.toggleSuggestionsPanel,
+                                icon: Icon(
+                                  state.showSuggestions
+                                      ? Icons.expand_less
+                                      : Icons.expand_more,
+                                ),
+                                label: Text(
+                                  state.showSuggestions ? 'Zwiń' : 'Rozwiń',
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              TextButton.icon(
+                                onPressed: vm.applyAllAppend,
+                                icon: const Icon(Icons.playlist_add),
+                                label: const Text('Dodaj wszystkie'),
+                              ),
+                              TextButton.icon(
+                                onPressed: vm.discardAllSuggestions,
+                                icon: const Icon(Icons.clear_all),
+                                label: const Text('Odrzuć wszystkie'),
+                              ),
+                            ],
+                          ),
+                          if (state.showSuggestions) ...[
+                            const SizedBox(height: 8),
+                            ...state.suggestions.map(
+                              (s) => Card(
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(s.content),
                                       const SizedBox(height: 8),
@@ -528,18 +710,23 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
                                         spacing: 8,
                                         children: [
                                           OutlinedButton.icon(
-                                            onPressed: () => vm.applySuggestionAppend(s),
+                                            onPressed: () =>
+                                                vm.applySuggestionAppend(s),
                                             icon: const Icon(Icons.add),
                                             label: const Text('Dodaj do końca'),
                                           ),
                                           OutlinedButton.icon(
-                                            onPressed: () => vm.applySuggestionReplace(s),
+                                            onPressed: () =>
+                                                vm.applySuggestionReplace(s),
                                             icon: const Icon(Icons.swap_horiz),
                                             label: const Text('Zastąp całość'),
                                           ),
                                           OutlinedButton.icon(
-                                            onPressed: () => vm.applySuggestionAsSection(s),
-                                            icon: const Icon(Icons.view_agenda_outlined),
+                                            onPressed: () =>
+                                                vm.applySuggestionAsSection(s),
+                                            icon: const Icon(
+                                              Icons.view_agenda_outlined,
+                                            ),
                                             label: const Text('Nowa sekcja'),
                                           ),
                                         ],
@@ -547,31 +734,33 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
                                     ],
                                   ),
                                 ),
-                              )),
-                        ]
-                      ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
+        floatingActionButton: Wrap(
+          spacing: 10,
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'ai1',
+              tooltip: 'Pomysły AI',
+              onPressed: state.isGenerating ? null : vm.generateIdeasWithApi,
+              child: const Icon(Icons.lightbulb_outline, size: 18),
             ),
-      floatingActionButton: Wrap(
-        spacing: 10,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'ai1',
-            tooltip: 'Pomysły AI',
-            onPressed: state.isGenerating ? null : vm.generateIdeasWithApi,
-            child: const Icon(Icons.lightbulb_outline, size: 18),
-          ),
-          FloatingActionButton.small(
-            heroTag: 'ai2',
-            tooltip: 'Rozwiń AI',
-            onPressed: state.isGenerating ? null : vm.expandIdeaWithApi,
-            child: const Icon(Icons.text_snippet_outlined, size: 18),
-          ),
-        ],
+            FloatingActionButton.small(
+              heroTag: 'ai2',
+              tooltip: 'Rozwiń AI',
+              onPressed: state.isGenerating ? null : vm.expandIdeaWithApi,
+              child: const Icon(Icons.text_snippet_outlined, size: 18),
+            ),
+          ],
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
@@ -592,10 +781,18 @@ class TrashPage extends ConsumerWidget {
                 context: context,
                 builder: (_) => AlertDialog(
                   title: const Text('Opróżnić kosz?'),
-                  content: const Text('Tych notatek nie będzie można przywrócić.'),
+                  content: const Text(
+                    'Tych notatek nie będzie można przywrócić.',
+                  ),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Anuluj')),
-                    FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Opróżnij')),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Anuluj'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Opróżnij'),
+                    ),
                   ],
                 ),
               );
@@ -685,28 +882,40 @@ class _SearchList extends ConsumerWidget {
             itemBuilder: (_) => [
               PopupMenuItem(
                 value: 'pin',
-                child: Row(children: [
-                  Icon(r.note.pinned ? Icons.push_pin_outlined : Icons.push_pin, size: 18),
-                  const SizedBox(width: 8),
-                  Text(r.note.pinned ? 'Odepnij' : 'Przypnij'),
-                ]),
+                child: Row(
+                  children: [
+                    Icon(
+                      r.note.pinned ? Icons.push_pin_outlined : Icons.push_pin,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(r.note.pinned ? 'Odepnij' : 'Przypnij'),
+                  ],
+                ),
               ),
               const PopupMenuDivider(),
               const PopupMenuItem(
                 value: 'trash',
-                child: Row(children: [
-                  Icon(Icons.delete_outline, size: 18),
-                  SizedBox(width: 8),
-                  Text('Przenieś do kosza'),
-                ]),
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline, size: 18),
+                    SizedBox(width: 8),
+                    Text('Przenieś do kosza'),
+                  ],
+                ),
               ),
             ],
           ),
-           onTap: () {
-             Navigator.of(context).push(
-               MaterialPageRoute(builder: (_) => NoteEditorPage(noteId: r.note.id)),
-             );
-           },
+          onTap: () async {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => NoteEditorPage(noteId: r.note.id),
+              ),
+            );
+            if (context.mounted) {
+              await ref.read(homeViewModelProvider.notifier).loadData();
+            }
+          },
         );
       },
     );
@@ -727,22 +936,121 @@ class _HomeLists extends ConsumerWidget {
           padding: EdgeInsets.fromLTRB(12, 12, 12, 6),
           child: Text('Foldery', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
-        ...folders.map((f) => ListTile(
-              leading: const Icon(Icons.folder_outlined),
-              title: Text(f.name),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => _FolderPage(folder: f)),
-                );
-              },
-            )),
+        ...folders.map(
+          (f) => ListTile(
+            leading: const Icon(Icons.folder_outlined),
+            title: Text(f.name),
+            onTap: () {
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => _FolderPage(folder: f)));
+            },
+          ),
+        ),
         const Padding(
           padding: EdgeInsets.fromLTRB(12, 12, 12, 6),
-          child: Text('Ostatnie notatki', style: TextStyle(fontWeight: FontWeight.bold)),
+          child: Text(
+            'Ostatnie notatki',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
         ),
-        ...recent.map((n) => Card(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: ListTile(
+        ...recent.map(
+          (n) => Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: ListTile(
+              title: Text(n.title.isEmpty ? '(bez tytułu)' : n.title),
+              subtitle: Row(
+                children: [
+                  _StatusBadge(status: n.status),
+                  const SizedBox(width: 8),
+                  Text(n.updatedAt.toLocal().toString()),
+                ],
+              ),
+              trailing: PopupMenuButton<String>(
+                tooltip: 'Menu',
+                icon: const Icon(Icons.more_vert),
+                position: PopupMenuPosition.over,
+                constraints: const BoxConstraints(minWidth: 140, maxWidth: 180),
+                onSelected: (v) async {
+                  switch (v) {
+                    case 'pin':
+                      await vm.toggleNotePinned(n.id);
+                      break;
+                    case 'trash':
+                      await vm.deleteNoteById(n.id);
+                      break;
+                  }
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: 'pin',
+                    child: Row(
+                      children: [
+                        Icon(
+                          n.pinned ? Icons.push_pin_outlined : Icons.push_pin,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(n.pinned ? 'Odepnij' : 'Przypnij'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'trash',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, size: 18),
+                        SizedBox(width: 8),
+                        Text('Przenieś do kosza'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              onTap: () async {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => NoteEditorPage(noteId: n.id),
+                  ),
+                );
+                if (context.mounted) {
+                  await vm.loadData();
+                }
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 80),
+      ],
+    );
+  }
+}
+
+class _FolderPage extends ConsumerWidget {
+  final Folder folder;
+  const _FolderPage({required this.folder});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.read(repositoryProvider);
+    return Scaffold(
+      appBar: AppBar(title: Text(folder.name)),
+      body: FutureBuilder<List<Note>>(
+        future: repo.listNotesInFolder(folder.id),
+        builder: (context, snap) {
+          if (!snap.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final items = snap.data!;
+          if (items.isEmpty)
+            return const _EmptyState(text: 'Brak notatek w folderze');
+          return ListView.separated(
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const Divider(height: 0),
+            itemBuilder: (context, index) {
+              final n = items[index];
+              return ListTile(
                 title: Text(n.title.isEmpty ? '(bez tytułu)' : n.title),
                 subtitle: Row(
                   children: [
@@ -754,9 +1062,8 @@ class _HomeLists extends ConsumerWidget {
                 trailing: PopupMenuButton<String>(
                   tooltip: 'Menu',
                   icon: const Icon(Icons.more_vert),
-                  position: PopupMenuPosition.over,
-                  constraints: const BoxConstraints(minWidth: 140, maxWidth: 180),
                   onSelected: (v) async {
+                    final vm = ref.read(homeViewModelProvider.notifier);
                     switch (v) {
                       case 'pin':
                         await vm.toggleNotePinned(n.id);
@@ -769,184 +1076,117 @@ class _HomeLists extends ConsumerWidget {
                   itemBuilder: (_) => [
                     PopupMenuItem(
                       value: 'pin',
-                      child: Row(children: [
-                        Icon(n.pinned ? Icons.push_pin_outlined : Icons.push_pin, size: 18),
-                        const SizedBox(width: 8),
-                        Text(n.pinned ? 'Odepnij' : 'Przypnij'),
-                      ]),
+                      child: Row(
+                        children: [
+                          Icon(
+                            n.pinned ? Icons.push_pin_outlined : Icons.push_pin,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(n.pinned ? 'Odepnij' : 'Przypnij'),
+                        ],
+                      ),
                     ),
                     const PopupMenuDivider(),
                     const PopupMenuItem(
                       value: 'trash',
-                      child: Row(children: [
-                        Icon(Icons.delete_outline, size: 18),
-                        SizedBox(width: 8),
-                        Text('Przenieś do kosza'),
-                      ]),
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 18),
+                          SizedBox(width: 8),
+                          Text('Przenieś do kosza'),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                 onTap: () {
-                   Navigator.of(context).push(
-                     MaterialPageRoute(builder: (_) => NoteEditorPage(noteId: n.id)),
-                   );
-                 },
-               ),
-             )),
-        const SizedBox(height: 80),
-      ],
-    );
-       }
-     }
-
-     class _FolderPage extends ConsumerWidget {
-       final Folder folder;
-       const _FolderPage({required this.folder});
-   
-       @override
-       Widget build(BuildContext context, WidgetRef ref) {
-         final repo = ref.read(repositoryProvider);
-         return Scaffold(
-           appBar: AppBar(title: Text(folder.name)),
-           body: FutureBuilder<List<Note>>(
-              future: repo.listNotesInFolder(folder.id),
-              builder: (context, snap) {
-                if (!snap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final items = snap.data!;
-                if (items.isEmpty) return const _EmptyState(text: 'Brak notatek w folderze');
-                return ListView.separated(
-                  itemCount: items.length,
-                  separatorBuilder: (_, __) => const Divider(height: 0),
-                  itemBuilder: (context, index) {
-                    final n = items[index];
-                    return ListTile(
-                      title: Text(n.title.isEmpty ? '(bez tytułu)' : n.title),
-                      subtitle: Row(
-                        children: [
-                          _StatusBadge(status: n.status),
-                          const SizedBox(width: 8),
-                          Text(n.updatedAt.toLocal().toString()),
-                        ],
-                      ),
-                      trailing: PopupMenuButton<String>(
-                        tooltip: 'Menu',
-                        icon: const Icon(Icons.more_vert),
-                        onSelected: (v) async {
-                          final vm = ref.read(homeViewModelProvider.notifier);
-                          switch (v) {
-                            case 'pin':
-                              await vm.toggleNotePinned(n.id);
-                              break;
-                            case 'trash':
-                              await vm.deleteNoteById(n.id);
-                              break;
-                          }
-                        },
-                        itemBuilder: (_) => [
-                          PopupMenuItem(
-                            value: 'pin',
-                            child: Row(children: [
-                              Icon(n.pinned ? Icons.push_pin_outlined : Icons.push_pin, size: 18),
-                              const SizedBox(width: 8),
-                              Text(n.pinned ? 'Odepnij' : 'Przypnij'),
-                            ]),
-                          ),
-                          const PopupMenuDivider(),
-                          const PopupMenuItem(
-                            value: 'trash',
-                            child: Row(children: [
-                              Icon(Icons.delete_outline, size: 18),
-                              SizedBox(width: 8),
-                              Text('Przenieś do kosza'),
-                            ]),
-                          ),
-                        ],
-                      ),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => NoteEditorPage(noteId: n.id)),
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            ),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => NoteEditorPage(noteId: n.id),
+                    ),
+                  );
+                },
+              );
+            },
           );
-        }
-      }
+        },
+      ),
+    );
+  }
+}
 
-     class _StatusBadge extends StatelessWidget {
-       final NoteStatus status;
-       const _StatusBadge({required this.status});
-   
-       Color _color(NoteStatus s, BuildContext ctx) {
-         final cs = Theme.of(ctx).colorScheme;
-         switch (s) {
-           case NoteStatus.idea:
-             return cs.secondary;
-           case NoteStatus.draft:
-             return cs.tertiary;
-           case NoteStatus.ready:
-             return cs.primary;
-           case NoteStatus.done:
-             return Colors.green; // wyróżnienie Done
-           case NoteStatus.dropped:
-             return cs.error;
-         }
-       }
-   
-       String _label(NoteStatus s) {
-         switch (s) {
-           case NoteStatus.idea:
-             return 'POMYSŁ';
-           case NoteStatus.draft:
-             return 'SZKIC';
-           case NoteStatus.ready:
-             return 'GOTOWE';
-           case NoteStatus.done:
-             return 'ZROBIONE';
-           case NoteStatus.dropped:
-             return 'PORZUCONE';
-         }
-       }
-   
-       @override
-       Widget build(BuildContext context) {
-         return Container(
-           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-           decoration: BoxDecoration(
-             color: _color(status, context).withValues(alpha: 0.08),
-             borderRadius: BorderRadius.circular(12),
-             border: Border.all(color: _color(status, context).withValues(alpha: 0.3)),
-           ),
-           child: Text(
-             _label(status),
-             style: TextStyle(fontSize: 12, color: _color(status, context)),
-           ),
-         );
-       }
-     }
+class _StatusBadge extends StatelessWidget {
+  final NoteStatus status;
+  const _StatusBadge({required this.status});
 
-     class _EmptyState extends StatelessWidget {
-       final String text;
-       const _EmptyState({required this.text});
-       @override
-       Widget build(BuildContext context) {
-         return Center(
-           child: Padding(
-             padding: const EdgeInsets.all(24.0),
-             child: Column(
-               mainAxisSize: MainAxisSize.min,
-               children: [
-                 const Icon(Icons.inbox_outlined, size: 48),
-                 const SizedBox(height: 12),
-                 Text(text),
-               ],
-             ),
-           ),
-         );
-       }
-     }
+  Color _color(NoteStatus s, BuildContext ctx) {
+    final cs = Theme.of(ctx).colorScheme;
+    switch (s) {
+      case NoteStatus.idea:
+        return cs.secondary;
+      case NoteStatus.draft:
+        return cs.tertiary;
+      case NoteStatus.ready:
+        return cs.primary;
+      case NoteStatus.done:
+        return Colors.green; // wyróżnienie Done
+      case NoteStatus.dropped:
+        return cs.error;
+    }
+  }
+
+  String _label(NoteStatus s) {
+    switch (s) {
+      case NoteStatus.idea:
+        return 'POMYSŁ';
+      case NoteStatus.draft:
+        return 'SZKIC';
+      case NoteStatus.ready:
+        return 'GOTOWE';
+      case NoteStatus.done:
+        return 'ZROBIONE';
+      case NoteStatus.dropped:
+        return 'PORZUCONE';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: _color(status, context).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _color(status, context).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Text(
+        _label(status),
+        style: TextStyle(fontSize: 12, color: _color(status, context)),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  final String text;
+  const _EmptyState({required this.text});
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.inbox_outlined, size: 48),
+            const SizedBox(height: 12),
+            Text(text),
+          ],
+        ),
+      ),
+    );
+  }
+}
