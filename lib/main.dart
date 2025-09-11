@@ -74,173 +74,156 @@ class HomePage extends ConsumerWidget {
         ),
         centerTitle: true,
       ),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Szukaj notatek...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: InputBorder.none,
-                      filled: true,
-                      fillColor: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                    ),
-                    onChanged: vm.setSearchQuery,
-                  ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Szukaj notatek...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: InputBorder.none,
+                  filled: true,
+                  fillColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest,
                 ),
-                if (state.searchQuery.isNotEmpty)
-                  Expanded(child: _SearchList(results: state.searchResults))
-                else
-                  Expanded(
-                    child: (state.folders.isEmpty && state.recentNotes.isEmpty)
-                        ? const _EmptyState(
-                            text:
-                                'Brak notatek. Dodaj pierwszą za pomocą przycisku +',
-                          )
-                        : _HomeLists(
-                            folders: state.folders,
-                            recent: state.recentNotes,
-                          ),
-                  ),
-              ],
-            ),
-          ),
-          // Ręcznie pozycjonowany FAB na dole, ponad BottomAppBar
-          Positioned(
-            bottom: 28, // nad BottomAppBar z lekkim marginesem
-            left: 0,
-            right: 0,
-            child: Center(
-              child: FloatingActionButton(
-                tooltip: 'Dodaj',
-                onPressed: () async {
-                  await showModalBottomSheet(
-                    context: context,
-                    showDragHandle: true,
-                    useSafeArea: true,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(16),
-                      ),
-                    ),
-                    builder: (_) {
-                      final textController = TextEditingController();
-                      return SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.note_add_outlined),
-                              title: const Text('Szybka notatka'),
-                              subtitle: const Text(
-                                'Utwórz nową notatkę i przejdź do edycji',
-                              ),
-                              onTap: () async {
-                                Navigator.pop(context);
-                                final repo = ref.read(repositoryProvider);
-                                final state = ref.read(homeViewModelProvider);
-                                Folder folder;
-                                if (state.folders.isNotEmpty) {
-                                  folder = state.folders.first;
-                                } else {
-                                  folder = await ref
-                                      .read(homeViewModelProvider.notifier)
-                                      .createFolder('Quick Ideas');
-                                }
-                                final note = await repo.createNote(
-                                  folder,
-                                  title: 'Nowa notatka',
-                                );
-                                if (context.mounted) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          NoteEditorPage(noteId: note.id),
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(
-                                Icons.create_new_folder_outlined,
-                              ),
-                              title: const Text('Nowy folder'),
-                              onTap: () async {
-                                Navigator.pop(context);
-                                String name = 'Nowy folder';
-                                final input = await showDialog<String>(
-                                  context: context,
-                                  builder: (ctx) {
-                                    return AlertDialog(
-                                      title: const Text('Nazwa folderu'),
-                                      content: TextField(
-                                        controller: textController,
-                                        autofocus: true,
-                                        decoration: const InputDecoration(
-                                          hintText: 'Wpisz nazwę folderu',
-                                        ),
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(ctx),
-                                          child: const Text('Anuluj'),
-                                        ),
-                                        FilledButton(
-                                          onPressed: () => Navigator.pop(
-                                            ctx,
-                                            textController.text.trim(),
-                                          ),
-                                          child: const Text('Utwórz'),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                                if (input != null && input.isNotEmpty)
-                                  name = input;
-                                final folder = await ref
-                                    .read(homeViewModelProvider.notifier)
-                                    .createFolder(name);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Utworzono folder: ${folder.name}',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-                child: const Icon(Icons.add),
+                onChanged: vm.setSearchQuery,
               ),
             ),
-          ),
-        ],
+            if (state.searchQuery.isNotEmpty)
+              Expanded(child: _SearchList(results: state.searchResults))
+            else
+              Expanded(
+                child: (state.folders.isEmpty && state.recentNotes.isEmpty)
+                    ? const _EmptyState(
+                        text:
+                            'Brak notatek. Dodaj pierwszą za pomocą przycisku +',
+                      )
+                    : _HomeLists(
+                        folders: state.folders,
+                        recent: state.recentNotes,
+                      ),
+              ),
+          ],
+        ),
       ),
-      // Usuwamy FAB ze Scaffold i pozostawiamy tylko ręcznie pozycjonowany w Stack
-      //floatingActionButton: FloatingActionButton(
-      //  ...
-      //),
-      //floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Dodaj',
+        onPressed: () async {
+          await showModalBottomSheet(
+            context: context,
+            showDragHandle: true,
+            useSafeArea: true,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+            ),
+            builder: (_) {
+              final textController = TextEditingController();
+              return SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.note_add_outlined),
+                      title: const Text('Szybka notatka'),
+                      subtitle: const Text(
+                        'Utwórz nową notatkę i przejdź do edycji',
+                      ),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final repo = ref.read(repositoryProvider);
+                        final state = ref.read(homeViewModelProvider);
+                        Folder folder;
+                        if (state.folders.isNotEmpty) {
+                          folder = state.folders.first;
+                        } else {
+                          folder = await ref
+                              .read(homeViewModelProvider.notifier)
+                              .createFolder('Quick Ideas');
+                        }
+                        final note = await repo.createNote(
+                          folder,
+                          title: 'Nowa notatka',
+                        );
+                        if (context.mounted) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => NoteEditorPage(noteId: note.id),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.create_new_folder_outlined,
+                      ),
+                      title: const Text('Nowy folder'),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        String name = 'Nowy folder';
+                        final input = await showDialog<String>(
+                          context: context,
+                          builder: (ctx) {
+                            return AlertDialog(
+                              title: const Text('Nazwa folderu'),
+                              content: TextField(
+                                controller: textController,
+                                autofocus: true,
+                                decoration: const InputDecoration(
+                                  hintText: 'Wpisz nazwę folderu',
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text('Anuluj'),
+                                ),
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(
+                                    ctx,
+                                    textController.text.trim(),
+                                  ),
+                                  child: const Text('Utwórz'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                        if (input != null && input.isNotEmpty) {
+                          name = input;
+                        }
+                        final folder = await ref
+                            .read(homeViewModelProvider.notifier)
+                            .createFolder(name);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Utworzono folder: ${folder.name}',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
-        // Usuwamy notcha, bo FAB nie jest dokowany (renderowany ręcznie powyżej)
-        //shape: const CircularNotchedRectangle(),
-        //notchMargin: 6,
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8,
         elevation: 8,
         color: Theme.of(context).colorScheme.surface,
         child: Padding(
@@ -636,65 +619,62 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
                     ),
                   ),
                   Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: TextFormField(
-                        controller: _contentController,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          hintText: 'Treść notatki...',
-                        ),
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                      ),
-                    ),
-                  ),
-                  if (state.suggestions.isNotEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        border: Border(
-                          top: BorderSide(
-                            color: Theme.of(context).dividerColor,
-                          ),
-                        ),
-                      ),
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        8,
+                        16,
+                        MediaQuery.of(context).viewInsets.bottom + 80,
+                      ), // dynamic bottom space so FAB/panel don't cover content
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              const Text('Sugestie AI'),
-                              const Spacer(),
-                              TextButton.icon(
-                                onPressed: vm.toggleSuggestionsPanel,
-                                icon: Icon(
-                                  state.showSuggestions
-                                      ? Icons.expand_less
-                                      : Icons.expand_more,
-                                ),
-                                label: Text(
-                                  state.showSuggestions ? 'Zwiń' : 'Rozwiń',
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              TextButton.icon(
-                                onPressed: vm.applyAllAppend,
-                                icon: const Icon(Icons.playlist_add),
-                                label: const Text('Dodaj wszystkie'),
-                              ),
-                              TextButton.icon(
-                                onPressed: vm.discardAllSuggestions,
-                                icon: const Icon(Icons.clear_all),
-                                label: const Text('Odrzuć wszystkie'),
-                              ),
-                            ],
+                          TextField(
+                            controller: _contentController,
+                            decoration: const InputDecoration(
+                              hintText: 'Treść notatki…',
+                              border: InputBorder.none,
+                            ),
+                            keyboardType: TextInputType.multiline,
+                            textInputAction: TextInputAction.newline,
+                            maxLines: null,
+                            minLines: 12,
                           ),
-                          if (state.showSuggestions) ...[
+                          const SizedBox(height: 12),
+                          if (state.suggestions.isNotEmpty) ...[
+                            // Zmieniamy nagłówek panelu sugestii na Wrap, aby nie nachodziły na siebie przyciski
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 4,
+                              alignment: WrapAlignment.spaceBetween,
+                              children: [
+                                const Text('Sugestie AI'),
+                                TextButton.icon(
+                                  onPressed: vm.toggleSuggestionsPanel,
+                                  icon: Icon(
+                                    state.showSuggestions
+                                        ? Icons.expand_less
+                                        : Icons.expand_more,
+                                  ),
+                                  label: Text(
+                                    state.showSuggestions ? 'Zwiń' : 'Rozwiń',
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  onPressed: vm.applyAllAppend,
+                                  icon: const Icon(Icons.playlist_add),
+                                  label: const Text('Dodaj wszystkie'),
+                                ),
+                                TextButton.icon(
+                                  onPressed: vm.discardAllSuggestions,
+                                  icon: const Icon(Icons.clear_all),
+                                  label: const Text('Odrzuć wszystkie'),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (state.showSuggestions && state.suggestions.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             ...state.suggestions.map(
                               (s) => Card(
@@ -706,30 +686,50 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
                                     children: [
                                       Text(s.content),
                                       const SizedBox(height: 8),
-                                      Wrap(
-                                        spacing: 8,
-                                        children: [
-                                          OutlinedButton.icon(
-                                            onPressed: () =>
-                                                vm.applySuggestionAppend(s),
-                                            icon: const Icon(Icons.add),
-                                            label: const Text('Dodaj do końca'),
-                                          ),
-                                          OutlinedButton.icon(
-                                            onPressed: () =>
-                                                vm.applySuggestionReplace(s),
-                                            icon: const Icon(Icons.swap_horiz),
-                                            label: const Text('Zastąp całość'),
-                                          ),
-                                          OutlinedButton.icon(
-                                            onPressed: () =>
-                                                vm.applySuggestionAsSection(s),
-                                            icon: const Icon(
-                                              Icons.view_agenda_outlined,
+                                      LayoutBuilder(
+                                        builder: (context, constraints) {
+                                          final isNarrow = constraints.maxWidth < 420;
+
+                                          final buttons = <Widget>[
+                                            OutlinedButton.icon(
+                                              onPressed: () => vm.applySuggestionAppend(s),
+                                              icon: const Icon(Icons.add),
+                                              label: const Text('Dodaj do końca'),
                                             ),
-                                            label: const Text('Nowa sekcja'),
-                                          ),
-                                        ],
+                                            OutlinedButton.icon(
+                                              onPressed: () => vm.applySuggestionReplace(s),
+                                              icon: const Icon(Icons.swap_horiz),
+                                              label: const Text('Zastąp całość'),
+                                            ),
+                                            OutlinedButton.icon(
+                                              onPressed: () => vm.applySuggestionAsSection(s),
+                                              icon: const Icon(Icons.view_agenda_outlined),
+                                              label: const Text('Nowa sekcja'),
+                                            ),
+                                          ];
+
+                                          if (isNarrow) {
+                                            return Column(
+                                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                                              children: [
+                                                for (final b in buttons)
+                                                  Padding(
+                                                    padding: const EdgeInsets.only(bottom: 8),
+                                                    child: SizedBox(
+                                                      width: double.infinity,
+                                                      child: b,
+                                                    ),
+                                                  ),
+                                              ],
+                                            );
+                                          }
+
+                                          return Wrap(
+                                            spacing: 8,
+                                            runSpacing: 8,
+                                            children: buttons,
+                                          );
+                                        },
                                       ),
                                     ],
                                   ),
@@ -740,6 +740,7 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
                         ],
                       ),
                     ),
+                  ),
                 ],
               ),
         floatingActionButton: Wrap(
@@ -747,15 +748,35 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
           children: [
             FloatingActionButton.small(
               heroTag: 'ai1',
-              tooltip: 'Pomysły AI',
+              tooltip: state.isGenerating ? 'Generowanie…' : 'Pomysły AI',
               onPressed: state.isGenerating ? null : vm.generateIdeasWithApi,
-              child: const Icon(Icons.lightbulb_outline, size: 18),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: state.isGenerating
+                    ? const SizedBox(
+                        key: ValueKey('ai1-loading'),
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.lightbulb_outline, size: 18, key: ValueKey('ai1-icon')),
+              ),
             ),
             FloatingActionButton.small(
               heroTag: 'ai2',
-              tooltip: 'Rozwiń AI',
+              tooltip: state.isGenerating ? 'Generowanie…' : 'Rozwiń AI',
               onPressed: state.isGenerating ? null : vm.expandIdeaWithApi,
-              child: const Icon(Icons.text_snippet_outlined, size: 18),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: state.isGenerating
+                    ? const SizedBox(
+                        key: ValueKey('ai2-loading'),
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.text_snippet_outlined, size: 18, key: ValueKey('ai2-icon')),
+              ),
             ),
           ],
         ),

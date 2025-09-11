@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/widgets.dart'
+    show FocusManager; // potrzebne do chowania klawiatury
 import 'models.dart';
 import 'repository.dart';
 
@@ -298,7 +300,7 @@ class NoteEditorState {
     this.isGenerating = false,
     this.useContext = true,
     this.suggestions = const [],
-    this.showSuggestions = true,
+    this.showSuggestions = false,
   });
 
   NoteEditorState copyWith({
@@ -431,184 +433,156 @@ class NoteEditorViewModel extends StateNotifier<NoteEditorState> {
   }
 
   void setSuggestionsPanel(bool visible) {
-    state = state.copyWith(showSuggestions: visible);
+    if (state.showSuggestions != visible) {
+      state = state.copyWith(showSuggestions: visible);
+    }
   }
 
-  // --- Sugestie: operacje na UI ---
+  // --- Operacje na sugestiach i stanie notatki ---
   void applySuggestionAppend(GeneratedSuggestion s) {
     final n = state.note;
     if (n == null) return;
-    final sep = n.content.trim().isEmpty ? '' : '\n\n';
-    final updated = n.content + sep + s.content.trim();
-    updateContent(updated);
+    final base = n.content.trimRight();
+    final append = s.content.trim();
+    final newContent = base.isEmpty ? append : '$base\n\n$append';
+    n.content = newContent;
+    n.updatedAt = DateTime.now();
+    state = state.copyWith(note: n, hasUnsavedChanges: true);
+    _scheduleAutosave();
   }
 
   void applySuggestionReplace(GeneratedSuggestion s) {
     final n = state.note;
     if (n == null) return;
-    updateContent(s.content.trim());
+    n.content = s.content.trim();
+    n.updatedAt = DateTime.now();
+    state = state.copyWith(note: n, hasUnsavedChanges: true);
+    _scheduleAutosave();
   }
 
   void applySuggestionAsSection(GeneratedSuggestion s) {
     final n = state.note;
     if (n == null) return;
-    final sep = n.content.trim().isEmpty ? '' : '\n\n';
-    final updated = "${n.content}$sep## Nowa sekcja\n\n${s.content.trim()}";
-    updateContent(updated);
+    final base = n.content.trimRight();
+    final section = s.content.trim();
+    final newContent = base.isEmpty ? section : '$base\n\n$section';
+    n.content = newContent;
+    n.updatedAt = DateTime.now();
+    state = state.copyWith(note: n, hasUnsavedChanges: true);
+    _scheduleAutosave();
   }
 
   void applyAllAppend() {
     final n = state.note;
-    if (n == null || state.suggestions.isEmpty) return;
-    final joined = state.suggestions.map((e) => e.content.trim()).where((e) => e.isNotEmpty).join('\n\n');
-    if (joined.isEmpty) return;
-    final sep = n.content.trim().isEmpty ? '' : '\n\n';
-    final updated = n.content + sep + joined;
-    updateContent(updated);
+    if (n == null) return;
+    if (state.suggestions.isEmpty) return;
+    final base = n.content.trimRight();
+    final bundle = state.suggestions.map((e) => e.content.trim()).where((e) => e.isNotEmpty).join('\n\n');
+    final newContent = base.isEmpty ? bundle : '$base\n\n$bundle';
+    n.content = newContent;
+    n.updatedAt = DateTime.now();
+    state = state.copyWith(note: n, hasUnsavedChanges: true, showSuggestions: false);
+    _scheduleAutosave();
   }
 
   void discardAllSuggestions() {
-    state = state.copyWith(suggestions: const []);
+    if (state.suggestions.isEmpty) return;
+    state = state.copyWith(suggestions: const [], showSuggestions: false);
   }
 
-  // --- Operacje na notatce (pin/status/kosz) ---
   Future<void> togglePinned() async {
     final n = state.note;
     if (n == null) return;
-    final newPinned = !n.pinned;
-    try {
-      await _repository.setNotePinned(n.id, newPinned);
-      n.pinned = newPinned;
-      n.updatedAt = DateTime.now();
-      state = state.copyWith(note: n);
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
-    }
+    final newPinned = !(n.pinned ?? false);
+    await _repository.setNotePinned(n.id, newPinned);
+    n.pinned = newPinned;
+    n.updatedAt = DateTime.now();
+    state = state.copyWith(note: n);
   }
 
   Future<void> setStatus(NoteStatus status) async {
     final n = state.note;
     if (n == null) return;
-    try {
-      await _repository.setNoteStatus(n.id, status);
-      n.status = status;
-      n.updatedAt = DateTime.now();
-      state = state.copyWith(note: n);
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
-    }
+    await _repository.setNoteStatus(n.id, status);
+    n.status = status;
+    n.updatedAt = DateTime.now();
+    state = state.copyWith(note: n);
   }
 
   Future<void> deleteCurrent() async {
     final n = state.note;
     if (n == null) return;
+    await _repository.deleteNoteById(n.id);
+    n.deletedAt = DateTime.now();
+    state = state.copyWith(note: n);
+  }
+
+  // --- Preferencje i limity AI ---
+  Future<bool> _checkAndIncrementDailyQuota() async {
     try {
-      await _repository.deleteNoteById(n.id);
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
+      final prefs = await SharedPreferences.getInstance();
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      final lastDate = prefs.getString(_kDailyDate);
+      int count = prefs.getInt(_kDailyCount) ?? 0;
+      if (lastDate != today) {
+        await prefs.setString(_kDailyDate, today);
+        count = 0;
+      }
+      final limit = _defaultDailyQuota; // można później pobrać z ustawień
+      if (count >= limit) return false;
+      await prefs.setInt(_kDailyCount, count + 1);
+      return true;
+    } catch (_) {
+      // jeżeli brak prefs, nie blokuj
+      return true;
+    }
+  }
+
+  Future<String> getOpenRouterModel() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final m = prefs.getString(_kOpenRouterModel);
+      return (m != null && m.isNotEmpty) ? m : _envOpenRouterModel;
+    } catch (_) {
+      return _envOpenRouterModel;
+    }
+  }
+
+  Future<String?> getCustomApiUrl() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final u = prefs.getString(_kCustomApiUrl);
+      if (u != null && u.isNotEmpty) return u;
+      return _envCustomApiUrl;
+    } catch (_) {
+      return _envCustomApiUrl;
+    }
+  }
+
+  Future<String?> getOpenRouterKey() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final k = prefs.getString(_kOpenRouterKey);
+      if (k != null && k.isNotEmpty) return k;
+      return _envOpenRouterKey.isNotEmpty ? _envOpenRouterKey : null;
+    } catch (_) {
+      return _envOpenRouterKey.isNotEmpty ? _envOpenRouterKey : null;
     }
   }
 
   String _buildContextSnippet() {
-    // Jeśli przełącznik kontekstu jest wyłączony, nie wysyłamy treści notatki do modelu
     if (!state.useContext) return '';
     final n = state.note;
-    if (n == null) return '';
-    final title = n.title.trim();
-    final content = n.content.trim();
-    final max = 1200;
-    String body = content.length <= max ? content : content.substring(0, max);
-    if (title.isNotEmpty) {
-      return '$title\n\n$body';
-    }
-    return body;
+    final src = (n?.content ?? '').trim();
+    if (src.isEmpty) return '';
+    const maxLen = 1200;
+    if (src.length <= maxLen) return src;
+    return src.substring(src.length - maxLen);
   }
 
-  void toggleUseContext() {
-    state = state.copyWith(useContext: !state.useContext);
-  }
-
-  Future<void> setCustomApiUrl(String url) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kCustomApiUrl, url.trim());
-  }
-
-  Future<void> setOpenRouterKey(String key) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kOpenRouterKey, key.trim());
-  }
-
-  Future<void> setOpenRouterModel(String model) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kOpenRouterModel, model.trim());
-  }
-
-  Future<String?> getCustomApiUrl() async {
-    // Preferuj build-time env; jeśli ustawione, ukrywa ustawienia użytkownika
-    if (_envCustomApiUrl.trim().isNotEmpty) return _envCustomApiUrl.trim();
-    final prefs = await SharedPreferences.getInstance();
-    final v = prefs.getString(_kCustomApiUrl);
-    if (v == null || v.trim().isEmpty) return null;
-    return v.trim();
-  }
-
-  Future<String?> getOpenRouterKey() async {
-    // Jeśli używamy Workera (custom url), klucz nie jest wymagany po stronie klienta
-    final custom = await getCustomApiUrl();
-    if (custom != null && custom.isNotEmpty) return '';
-    if (_envOpenRouterKey.trim().isNotEmpty) return _envOpenRouterKey.trim();
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_kOpenRouterKey);
-  }
-
-  Future<String> getOpenRouterModel() async {
-    // Model jest używany tylko dla OpenRouter bez pośrednika
-    final custom = await getCustomApiUrl();
-    if (custom != null && custom.isNotEmpty) return _defaultFreeModel;
-    if (_envOpenRouterModel.trim().isNotEmpty) return _envOpenRouterModel.trim();
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_kOpenRouterModel) ?? _defaultFreeModel;
-  }
-
-  Future<bool> _checkAndIncrementDailyQuota() async {
-    // TEMP: quota disabled; keep constants for future use to avoid breaking prefs schema
-    final tag = _kDailyCount + _kDailyDate + _defaultDailyQuota.toString();
-    if (tag.isEmpty) {
-      // never happens, only to use constants
-      return true;
-    }
-    return true;
-  }
-
-  // now add new methods inside class for auto-AI
-  void _scheduleAutoAi() {
-    _genDelay?.cancel();
-    _genDelay = Timer(const Duration(milliseconds: 1200), _autoGenerate);
-  }
-
-  Future<void> _autoGenerate() async {
-    if (state.isGenerating) return;
-    final n = state.note;
-    if (n == null) return;
-    final content = n.content.trim();
-    if (content.isEmpty) return;
-    final snippet = _buildContextSnippet();
-    final isQuestion = content.endsWith('?');
-    final sigBase = snippet.isEmpty ? content : snippet;
-    final sig = (isQuestion ? 'Q|' : 'S|') + (sigBase.length > 200 ? sigBase.substring(0, 200) : sigBase);
-    if (_lastAutoSig == sig) return; // nic nowego do generowania
-    _lastAutoSig = sig;
-
-    if (isQuestion) {
-      await expandIdeaWithApi(true); // auto: wstaw do notatki jako sekcję
-    } else if (content.length >= 20) {
-      await generateIdeasWithApi(false); // auto: tylko pokaż sugestie
-    }
-  }
-
-  // ---- API calls ----
   Future<void> generateIdeasWithApi([bool auto = false]) async {
-    if (state.note == null || state.isGenerating) return;
+    // hide keyboard on start
+    FocusManager.instance.primaryFocus?.unfocus();
     final ok = await _checkAndIncrementDailyQuota();
     if (!ok) {
       state = state.copyWith(error: 'Dzienny limit generacji został wykorzystany');
@@ -658,7 +632,7 @@ class NoteEditorViewModel extends StateNotifier<NoteEditorState> {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         final text = (data['choices']?[0]?['message']?['content'] ?? '').toString().trim();
         final s = GeneratedSuggestion(id: 'e${DateTime.now().microsecondsSinceEpoch}', content: text);
-        state = state.copyWith(isGenerating: false, suggestions: [s]);
+        state = state.copyWith(isGenerating: false, suggestions: [s], showSuggestions: true);
         if (auto) {
           // automatycznie dodaj rozwinięcie jako nową sekcję
           _suppressAutoOnce = true;
@@ -673,7 +647,8 @@ class NoteEditorViewModel extends StateNotifier<NoteEditorState> {
   }
 
   Future<void> expandIdeaWithApi([bool auto = false]) async {
-    if (state.note == null || state.isGenerating) return;
+    // hide keyboard on start
+    FocusManager.instance.primaryFocus?.unfocus();
     final ok = await _checkAndIncrementDailyQuota();
     if (!ok) {
       state = state.copyWith(error: 'Dzienny limit generacji został wykorzystany');
@@ -702,7 +677,9 @@ class NoteEditorViewModel extends StateNotifier<NoteEditorState> {
       final headers = <String, String>{
         'Content-Type': 'application/json',
       };
-      if (customUrl == null || customUrl.isEmpty) {
+      if (customUrl == null || customUrl.isNotEmpty) {
+        // nothing
+      } else {
         headers['Authorization'] = 'Bearer $key';
       }
       final res = await http.post(
@@ -720,7 +697,7 @@ class NoteEditorViewModel extends StateNotifier<NoteEditorState> {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         final text = (data['choices']?[0]?['message']?['content'] ?? '').toString();
         final s = GeneratedSuggestion(id: 'e${DateTime.now().microsecondsSinceEpoch}', content: text.trim());
-        state = state.copyWith(isGenerating: false, suggestions: [s]);
+        state = state.copyWith(isGenerating: false, suggestions: [s], showSuggestions: true);
         if (auto) {
           _suppressAutoOnce = true;
           applySuggestionAsSection(s);
@@ -744,3 +721,6 @@ class NoteEditorViewModel extends StateNotifier<NoteEditorState> {
 final noteEditorViewModelProvider = StateNotifierProvider.family<NoteEditorViewModel, NoteEditorState, String>((ref, noteId) {
   return NoteEditorViewModel(ref.read(repositoryProvider), noteId);
 });
+
+
+// duplicate removed (second provider + duplicate class)
