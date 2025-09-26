@@ -71,10 +71,38 @@ class HomeViewModel extends StateNotifier<HomeState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final folders = await _repository.listFolders(sortBy: state.sortBy);
-      final recentNotes = await _repository.listRecentNotes(
+      var recentNotes = await _repository.listRecentNotes(
         onlyLast7Days: state.showLast7Days,
         status: state.statusFilter,
       );
+
+      // Jeśli nie ma żadnych ostatnich notatek, utwórz jedną startową,
+      // aby sekcja "Ostatnie notatki" nie była pusta.
+      if (recentNotes.isEmpty) {
+        // Użyj istniejącego folderu lub załóż "Quick Ideas"
+        final folderToUse = folders.isNotEmpty
+            ? folders.first
+            : await _repository.getOrCreateFolderByName('Quick Ideas');
+        // Utwórz prostą notatkę startową
+        await _repository.createNote(
+          folderToUse,
+          title: 'Nowa notatka',
+          content: '',
+        );
+        // Odśwież listy po seedzie
+        final refreshedFolders = await _repository.listFolders(sortBy: state.sortBy);
+        recentNotes = await _repository.listRecentNotes(
+          onlyLast7Days: state.showLast7Days,
+          status: state.statusFilter,
+        );
+        state = state.copyWith(
+          folders: refreshedFolders,
+          recentNotes: recentNotes,
+          isLoading: false,
+        );
+        return;
+      }
+
       state = state.copyWith(
         folders: folders,
         recentNotes: recentNotes,
@@ -334,8 +362,6 @@ class NoteEditorViewModel extends StateNotifier<NoteEditorState> {
   final String _noteId;
   Timer? _saveDebounce;
   Timer? _genDelay;
-  String? _lastAutoSig;
-  bool _suppressAutoOnce = false;
 
   // Klucze do SharedPreferences
   static const _kOpenRouterKey = 'ai_openrouter_key';
@@ -493,7 +519,7 @@ class NoteEditorViewModel extends StateNotifier<NoteEditorState> {
   Future<void> togglePinned() async {
     final n = state.note;
     if (n == null) return;
-    final newPinned = !(n.pinned ?? false);
+    final newPinned = !n.pinned;
     await _repository.setNotePinned(n.id, newPinned);
     n.pinned = newPinned;
     n.updatedAt = DateTime.now();
@@ -635,7 +661,6 @@ class NoteEditorViewModel extends StateNotifier<NoteEditorState> {
         state = state.copyWith(isGenerating: false, suggestions: [s], showSuggestions: true);
         if (auto) {
           // automatycznie dodaj rozwinięcie jako nową sekcję
-          _suppressAutoOnce = true;
           applySuggestionAsSection(s);
         }
       } else {
@@ -699,7 +724,6 @@ class NoteEditorViewModel extends StateNotifier<NoteEditorState> {
         final s = GeneratedSuggestion(id: 'e${DateTime.now().microsecondsSinceEpoch}', content: text.trim());
         state = state.copyWith(isGenerating: false, suggestions: [s], showSuggestions: true);
         if (auto) {
-          _suppressAutoOnce = true;
           applySuggestionAsSection(s);
         }
       } else {

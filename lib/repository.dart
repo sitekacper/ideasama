@@ -169,8 +169,9 @@ class Repository {
       content = await index.getNoteContent(noteId) ?? '';
     } else {
       final folderMeta = await index.getFolder(meta['folderId'] as String);
-      if (folderMeta == null)
+      if (folderMeta == null) {
         throw Exception('Folder not found for note: $noteId');
+      }
       final fileData = await fs.readNoteFile(
         folderId: meta['folderId'] as String,
         folderName: folderMeta['name'] as String,
@@ -231,8 +232,9 @@ class Repository {
     }
 
     final folderMeta = await index.getFolder(note.folderId);
-    if (folderMeta == null)
+    if (folderMeta == null) {
       throw Exception('Folder not found: ${note.folderId}');
+    }
 
     // Read existing content to guard against accidental wipe
     final existingFileData = await fs.readNoteFile(
